@@ -1,8 +1,7 @@
-const express = require('express')
-const { addCustomer } = require('../controllers/customer.controller');
-const router = express.Router({mergeParams: true})
+const express = require("express");
+const { addCustomer } = require("../controllers/customer.controller");
+const router = express.Router({ mergeParams: true });
 
+router.post("/", addCustomer);
 
-router.post('/', addCustomer);
-
-module.exports = router
+module.exports = router;
