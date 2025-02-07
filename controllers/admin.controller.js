@@ -1,6 +1,7 @@
 const Admin = require("../models/admin.model");
 const HandleError = require("../utils/HandleError");
 const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 const { sendEmail } = require("../utils/SendEmail");
 
 module.exports.addAdmin = async (req, res, next) => {
@@ -58,6 +59,42 @@ module.exports.addAdmin = async (req, res, next) => {
     res
       .status(201)
       .json({ message: "Admin added successfully", admin: newAdmin });
+  } catch (e) {
+    next(e);
+  }
+};
+module.exports.loginAdmin = async (req, res, next) => {
+  try {
+    const { email, password } = req.body;
+    // Validate required fields
+    if (!email || !password) {
+      throw new HandleError("Email and password are required", 400);
+    }
+    // Validate email format
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw new HandleError("Invalid email format", 400);
+    }
+    // Check if admin exists by email
+    const admin = await Admin.findOne({ email: email.toLowerCase() });
+    if (!admin) {
+      throw new HandleError("Invalid email or password", 401);
+    }
+    // Check if password is correct
+    const isMatch = await bcrypt.compare(password, admin.password);
+    if (!isMatch) {
+      throw new HandleError("Invalid email or password", 401);
+    }
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: admin._id, role: "admin" },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" }
+    );
+    res.cookie("c_user", admin._id.toString());
+    res
+      .cookie("access_token", token, { httpOnly: true })
+      .status(200)
+      .json({ message: "Login successful", token });
   } catch (e) {
     next(e);
   }
