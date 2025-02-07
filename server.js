@@ -3,6 +3,7 @@ const env = require("dotenv").config();
 const morgan = require("morgan");
 const cors = require("cors");
 const mongoose = require("mongoose");
+const cookieParser = require("cookie-parser");
 
 const app = express();
 
@@ -20,6 +21,7 @@ app.use(
 );
 app.use(express.json());
 app.use(morgan("dev"));
+app.use(cookieParser());
 
 // routes
 const adminRoute = require("./routes/admin.route");
