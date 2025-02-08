@@ -42,3 +42,22 @@ module.exports.addCustomer = async (req, res, next) => {
     next(error);
   }
 };
+module.exports.getCustomers = async (req, res, next) => {
+  try {
+    const customers = await Customer.find().select("-password");
+    res.status(200).json({ customers });
+  } catch (error) {
+    next(error);
+  }
+};
+module.exports.getCustomerById = async (req, res, next) => {
+  try {
+    const customer = await Customer.findById(req.params.id).select("-password");
+    if (!customer) {
+      throw new HandleError("Customer not found", 404);
+    }
+    res.status(200).json({ customer });
+  } catch (error) {
+    next(error);
+  }
+};
