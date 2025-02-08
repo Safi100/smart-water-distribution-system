@@ -4,7 +4,7 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { sendEmail } = require("../utils/SendEmail");
 
-module.exports.addAdmin = async (req, res, next) => {
+module.exports.addAdminManager = async (req, res, next) => {
   try {
     const { name, phone, email } = req.body;
     // Validate required fields
@@ -95,6 +95,65 @@ module.exports.loginAdmin = async (req, res, next) => {
       .cookie("access_token", token, { httpOnly: true })
       .status(200)
       .json({ message: "Login successful", token });
+  } catch (e) {
+    next(e);
+  }
+};
+module.exports.removeAdminManager = async (req, res, next) => {
+  try {
+    const admin = await Admin.findByIdAndDelete(req.params.id);
+    if (!admin) {
+      throw new HandleError("Admin not found", 404);
+    }
+    res.status(200).json({ message: "Admin removed successfully", admin });
+  } catch (e) {
+    next(e);
+  }
+};
+module.exports.getAdmins = async (req, res, next) => {
+  try {
+    const admins = await Admin.find().select("-password");
+    res.status(200).json({ managers: admins });
+  } catch (e) {
+    next(e);
+  }
+};
+module.exports.forgotPassword = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    // Validate required fields
+    if (!email) {
+      throw new HandleError("Email is required", 400);
+    }
+    // Validate email format
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw new HandleError("Invalid email format", 400);
+    }
+    // Check if admin exists by email
+    const admin = await Admin.findOne({ email: email.toLowerCase() });
+    if (!admin) {
+      throw new HandleError("Admin not found", 404);
+    }
+    // generate random password
+    const RandomPassword = Math.random().toString(36);
+    // hash password
+    const hashedPassword = await bcrypt.hash(RandomPassword, 10);
+    admin.password = hashedPassword;
+    await admin.save();
+    await sendEmail(
+      email,
+      "Password Reset - Your New Temporary Password",
+      `<div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+        <h2 style="color: #007BFF;">Password Reset Request</h2>
+        <p>We received a password reset request for your account. Below is your new temporary password:</p>
+        <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 15px 0;">
+        <p><strong>Temporary Password: </strong> <span style="font-weight: bold; color: #d9534f;">${RandomPassword}</span></p>
+        </div>
+        <p>Please log in to your admin panel using the new password and change it as soon as possible.</p>
+        <p>Best regards,<br><strong>Water management system</strong></p>
+      </div>`
+    );
+    res.status(200).json({ message: "Password reset email sent successfully" });
   } catch (e) {
     next(e);
   }
