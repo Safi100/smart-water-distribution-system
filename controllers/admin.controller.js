@@ -88,7 +88,7 @@ module.exports.loginAdmin = async (req, res, next) => {
     const token = jwt.sign(
       { id: admin._id, role: "admin" },
       process.env.JWT_SECRET,
-      { expiresIn: "1d" }
+      { expiresIn: "30d" }
     );
     res.cookie("c_user", admin._id.toString());
     res
