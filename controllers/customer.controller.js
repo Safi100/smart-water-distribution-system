@@ -192,3 +192,43 @@ module.exports.updateCustomer = async (req, res, next) => {
     next(error);
   }
 };
+module.exports.changePassword = async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    // Validate required fields
+    if (!currentPassword || !newPassword) {
+      throw new HandleError(
+        "Current password and new password are required",
+        400
+      );
+    }
+    // Check if customer exists by id
+    const customer = await Customer.findById(req.user.id);
+    if (!customer) {
+      throw new HandleError("Customer not found", 404);
+    }
+    // Check if current password is correct
+    const isMatch = await bcrypt.compare(currentPassword, customer.password);
+    if (!isMatch) {
+      throw new HandleError("Invalid current password", 401);
+    }
+    // hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    customer.password = hashedPassword;
+    await customer.save();
+    res.status(200).json({ message: "Password changed successfully" });
+  } catch (e) {
+    next(e);
+  }
+};
+module.exports.fetchProile = async (req, res, next) => {
+  try {
+    const customer = await Customer.findById(req.user.id).select("-password");
+    if (!customer) {
+      throw new HandleError("Customer not found", 404);
+    }
+    res.status(200).json({ customer });
+  } catch (error) {
+    next(error);
+  }
+};
