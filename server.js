@@ -4,6 +4,7 @@ const morgan = require("morgan");
 const cors = require("cors");
 const mongoose = require("mongoose");
 const cookieParser = require("cookie-parser");
+const cron = require("node-cron");
 
 const app = express();
 
@@ -35,6 +36,11 @@ app.use((err, req, res, next) => {
   const { statusCode = 500 } = err;
   console.log(err.message);
   res.status(statusCode).json(err.message);
+});
+
+cron.schedule("*/5 * * * *", () => {
+  console.log("Running a task every 5 minutes");
+  // Your function or API call here
 });
 
 const port = process.env.PORT || 3000;
