@@ -38,9 +38,10 @@ app.use((err, req, res, next) => {
   res.status(statusCode).json(err.message);
 });
 
-cron.schedule("*/5 * * * *", () => {
-  console.log("Running a task every 5 minutes");
-  // Your function or API call here
+const axios = require("axios");
+
+cron.schedule("*/1 * * * *", async () => {
+  await axios.get("https://smart-water-distribution-system.onrender.com/");
 });
 
 const port = process.env.PORT || 3000;
