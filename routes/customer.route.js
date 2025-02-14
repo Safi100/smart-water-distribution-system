@@ -8,6 +8,7 @@ const {
   updateCustomer,
   changePassword,
   fetchProile,
+  currentUser,
 } = require("../controllers/customer.controller");
 
 const router = express.Router({ mergeParams: true });
@@ -18,6 +19,8 @@ const { isLoggedIn, isManagerOrAbove } = require("../middleware");
 router.post("/login", loginCustomer);
 // forgot password
 router.post("/forgot-password", forgotPassword);
+// current user
+router.get("/current-user", isLoggedIn, currentUser);
 // update customer data - current customer
 router.put("/update-data", isLoggedIn, updateCustomer);
 // update customer password - current customer

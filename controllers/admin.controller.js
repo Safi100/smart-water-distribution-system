@@ -158,3 +158,17 @@ module.exports.forgotPassword = async (req, res, next) => {
     next(e);
   }
 };
+module.exports.currentUser = async (req, res, next) => {
+  try {
+    const user = await Admin.findById(req.user.id);
+    if (!user) {
+      throw new HandleError("User not found", 404);
+    }
+    // extract password
+    const { password: _, ...userWithoutPassword } = user.toObject();
+
+    res.status(200).json(userWithoutPassword);
+  } catch (e) {
+    next(e);
+  }
+};

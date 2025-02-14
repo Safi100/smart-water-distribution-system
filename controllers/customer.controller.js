@@ -232,3 +232,17 @@ module.exports.fetchProile = async (req, res, next) => {
     next(error);
   }
 };
+module.exports.currentUser = async (req, res, next) => {
+  try {
+    const user = await Customer.findById(req.user.id);
+    if (!user) {
+      throw new HandleError("User not found", 404);
+    }
+    // extract password
+    const { password: _, ...userWithoutPassword } = user.toObject();
+
+    res.status(200).json(userWithoutPassword);
+  } catch (e) {
+    next(e);
+  }
+};
