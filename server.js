@@ -40,7 +40,7 @@ app.use((err, req, res, next) => {
 
 const axios = require("axios");
 
-cron.schedule("*/1 * * * *", async () => {
+cron.schedule("*/5 * * * *", async () => {
   await axios
     .get("https://smart-water-distribution-system.onrender.com/")
     .then((response) => {
