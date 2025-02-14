@@ -41,7 +41,14 @@ app.use((err, req, res, next) => {
 const axios = require("axios");
 
 cron.schedule("*/1 * * * *", async () => {
-  await axios.get("https://smart-water-distribution-system.onrender.com/");
+  await axios
+    .get("https://smart-water-distribution-system.onrender.com/")
+    .then((response) => {
+      console.log("Data fetched from external API:", response.data);
+    })
+    .catch((error) => {
+      console.error("Error fetching data from external API:", error);
+    });
 });
 
 const port = process.env.PORT || 3000;
