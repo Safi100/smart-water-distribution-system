@@ -44,10 +44,10 @@ cron.schedule("*/1 * * * *", async () => {
   await axios
     .get("https://smart-water-distribution-system.onrender.com/")
     .then((response) => {
-      console.log("Data fetched from external API:", response.data);
+      console.log("Data fetched from external API");
     })
     .catch((error) => {
-      console.error("Error fetching data from external API:", error);
+      console.error("Error fetching data from external API");
     });
 });
 
