@@ -17,7 +17,6 @@ module.exports.addAdminManager = async (req, res, next) => {
     }
     // Check if admin already exists by email
     const isExist = await Admin.findOne({ email: email.toLowerCase() });
-    console.log(isExist);
 
     if (isExist) {
       throw new HandleError("Email already exists", 400);
@@ -171,4 +170,9 @@ module.exports.currentUser = async (req, res, next) => {
   } catch (e) {
     next(e);
   }
+};
+module.exports.logout = (req, res, next) => {
+  res.clearCookie("c_user");
+  res.clearCookie("access_token");
+  res.status(200).json({ message: "Logged out successfully" });
 };
