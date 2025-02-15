@@ -15,8 +15,9 @@ mongoose
 
 app.use(
   cors({
-    origin: "*",
+    origin: ["http://localhost:3000"],
     methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true,
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
@@ -25,9 +26,11 @@ app.use(morgan("dev"));
 app.use(cookieParser());
 
 // routes
+const indexRoute = require("./routes/index.route");
 const adminRoute = require("./routes/admin.route");
 const customerRoutes = require("./routes/customer.route");
 
+app.use("/api", indexRoute);
 app.use("/api/admin", adminRoute);
 app.use("/api/customer", customerRoutes);
 
