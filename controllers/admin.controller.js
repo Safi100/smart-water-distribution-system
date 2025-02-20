@@ -112,7 +112,7 @@ module.exports.removeAdminManager = async (req, res, next) => {
 module.exports.getAdmins = async (req, res, next) => {
   try {
     const admins = await Admin.find().select("-password");
-    res.status(200).json({ managers: admins });
+    res.status(200).json(admins);
   } catch (e) {
     next(e);
   }

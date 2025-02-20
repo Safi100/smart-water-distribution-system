@@ -50,7 +50,7 @@ module.exports.addCustomer = async (req, res, next) => {
 module.exports.getCustomers = async (req, res, next) => {
   try {
     const customers = await Customer.find().select("-password");
-    res.status(200).json({ customers });
+    res.status(200).json(customers);
   } catch (error) {
     next(error);
   }
