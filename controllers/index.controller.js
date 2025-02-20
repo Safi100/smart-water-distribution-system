@@ -1,4 +1,6 @@
 const Customer = require("../models/customer.model");
+const City = require("../models/city.model");
+const Admin = require("../models/admin.model");
 
 module.exports.generalSearch = async (req, res, next) => {
   try {
@@ -30,7 +32,7 @@ module.exports.generalSearch = async (req, res, next) => {
       });
     }
 
-    // sort data (games and users) by title
+    // sort data
     data.sort((a, b) => {
       const titleA = a.title.toUpperCase();
       const titleB = b.title.toUpperCase();
@@ -45,6 +47,20 @@ module.exports.generalSearch = async (req, res, next) => {
     });
     // send data to client
     res.status(200).json(data);
+  } catch (e) {
+    next(e);
+  }
+};
+module.exports.dashboard_data = async (req, res, next) => {
+  try {
+    const totalCustomers = await Customer.countDocuments({});
+    const totalEmployees = await Admin.countDocuments({});
+    const totalCities = await City.countDocuments({});
+    res.status(200).json({
+      totalCustomers,
+      totalEmployees,
+      totalCities,
+    });
   } catch (e) {
     next(e);
   }
