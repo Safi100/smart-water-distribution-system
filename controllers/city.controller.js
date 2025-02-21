@@ -26,3 +26,20 @@ module.exports.getCities = async (req, res, next) => {
     next(err);
   }
 };
+module.exports.getCity = async (req, res, next) => {
+  try {
+    const city = await City.findById(req.params.id).populate({
+      path: "tanks",
+      populate: {
+        path: "owner",
+        select: ["name", "email", "identity_number", "phone"],
+      },
+    });
+    if (!city) {
+      throw new HandleError("City not found", 404);
+    }
+    res.status(200).json(city);
+  } catch (err) {
+    next(err);
+  }
+};
