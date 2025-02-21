@@ -30,11 +30,13 @@ const indexRoute = require("./routes/index.route");
 const adminRoute = require("./routes/admin.route");
 const customerRoutes = require("./routes/customer.route");
 const CityRoute = require("./routes/city.route");
+const TankRoute = require("./routes/tank.route");
 
 app.use("/api", indexRoute);
 app.use("/api/admin", adminRoute);
 app.use("/api/customer", customerRoutes);
 app.use("/api/city", CityRoute);
+app.use("/api/tank", TankRoute);
 
 app.use((err, req, res, next) => {
   if (!err.message) err.message = "Internal Server Error";
