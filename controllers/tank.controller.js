@@ -64,21 +64,3 @@ module.exports.addTank = async (req, res, next) => {
     next(e);
   }
 };
-module.exports.getTanksByCity = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    // Validate city id
-    const cityExists = await City.findById(id);
-    if (!cityExists) {
-      throw new HandleError("Invalid city id", 400);
-    }
-    // Fetch and return tanks by city
-    const tanks = await Tank.find({ city: id }).populate({
-      path: "owner",
-      select: ["identity_number", "name", "phone", "email"],
-    });
-    res.status(200).json(tanks);
-  } catch (e) {
-    next(e);
-  }
-};
