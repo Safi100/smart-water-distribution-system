@@ -7,6 +7,16 @@ const tankSchema = new mongoose.Schema(
       ref: "Customer",
       required: true,
     },
+    radius: {
+      type: Number,
+      required: true,
+      min: 1,
+    },
+    height: {
+      type: Number,
+      required: true,
+      min: 1,
+    },
     city: { type: mongoose.Schema.Types.ObjectId, ref: "City", required: true }, // Link tank to a city
     family_members: [
       {
@@ -50,6 +60,18 @@ tankSchema.virtual("monthly_capacity").get(function () {
     (total, member) => total + dailyUsage(member) * 30,
     0
   );
+});
+
+tankSchema.virtual("max_capacity").get(function () {
+  // Volume in cubic centimeters
+  const volumeInCubicCentimeters =
+    Math.PI * Math.pow(this.radius, 2) * this.height;
+
+  // Convert cm³ -> liters
+  const volumeInLiters = volumeInCubicCentimeters / 1000;
+
+  // Round to 2 decimal places and convert string to number
+  return parseFloat(volumeInLiters.toFixed(2));
 });
 
 module.exports = mongoose.model("Tank", tankSchema);
