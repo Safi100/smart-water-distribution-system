@@ -57,11 +57,17 @@ module.exports.getCustomers = async (req, res, next) => {
 };
 module.exports.getCustomerById = async (req, res, next) => {
   try {
-    const customer = await Customer.findById(req.params.id).select("-password");
+    const customer = await Customer.findById(req.params.id)
+      .select("-password")
+      .populate({
+        path: "tanks",
+        select: "-owner",
+        populate: { path: "city", select: ["name"] },
+      });
     if (!customer) {
       throw new HandleError("Customer not found", 404);
     }
-    res.status(200).json({ customer });
+    res.status(200).json(customer);
   } catch (error) {
     next(error);
   }
@@ -227,7 +233,7 @@ module.exports.fetchProile = async (req, res, next) => {
     if (!customer) {
       throw new HandleError("Customer not found", 404);
     }
-    res.status(200).json({ customer });
+    res.status(200).json(customer);
   } catch (error) {
     next(error);
   }
