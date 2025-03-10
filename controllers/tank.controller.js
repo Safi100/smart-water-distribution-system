@@ -64,3 +64,14 @@ module.exports.addTank = async (req, res, next) => {
     next(e);
   }
 };
+module.exports.tankProfile = async (req, res, next) => {
+  try {
+    const tank = await Tank.findById(req.params.id).populate("owner city");
+    if (!tank) {
+      throw new HandleError("Tank not found", 404);
+    }
+    res.status(200).json(tank);
+  } catch (e) {
+    next(e);
+  }
+};
