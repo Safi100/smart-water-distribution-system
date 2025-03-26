@@ -75,3 +75,16 @@ module.exports.tankProfile = async (req, res, next) => {
     next(e);
   }
 };
+
+module.exports.getTanks = async (req, res, next) => {
+  try {
+    const user = await Customer.findById(req.user.id);
+    if (!user) {
+      throw new HandleError("User not found", 404);
+    }
+    const tanks = await Tank.find({ owner: user._id });
+    res.status(200).json(tanks);
+  } catch (e) {
+    next(e);
+  }
+};
