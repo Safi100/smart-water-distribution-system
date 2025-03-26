@@ -88,3 +88,23 @@ module.exports.getTanks = async (req, res, next) => {
     next(e);
   }
 };
+
+module.exports.ProfileTankForCustomer = async (req, res, next) => {
+  try {
+    const current_customer = await Customer.findById(req.user.id);
+    if (!current_customer) {
+      throw new HandleError("Customer not found", 404);
+    }
+    const tank = await Tank.findById(req.params.id).populate("owner city");
+    if (!tank) {
+      throw new HandleError("Tank not found", 404);
+    }
+
+    if (tank.owner._id.toString() !== current_customer._id.toString()) {
+      throw new HandleError("Unauthorized access", 401);
+    }
+    res.status(200).json(tank);
+  } catch (e) {
+    next(e);
+  }
+};
