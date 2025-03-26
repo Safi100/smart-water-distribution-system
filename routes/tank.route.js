@@ -11,9 +11,9 @@ const { isLoggedIn, isManagerOrAbove } = require("../middleware");
 
 // add new tank
 router.post("/", isLoggedIn, isManagerOrAbove, addTank);
+// get tanks
+router.get("/customer-tanks", isLoggedIn, getTanks);
 // get tank by id
 router.get("/:id", isLoggedIn, isManagerOrAbove, tankProfile);
-// get tank by id
-router.get("/customer-tanks", isLoggedIn, getTanks);
 
 module.exports = router;
