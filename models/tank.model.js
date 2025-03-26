@@ -31,6 +31,11 @@ const tankSchema = new mongoose.Schema(
       },
     ],
     current_level: { type: Number, default: 0, min: 0 }, // Track current water level
+    amount_per_month: {
+      month: { type: Number, required: true }, // Current month (1-12)
+      days: { type: Object, required: true }, // Object with keys as days (1-31) and values as amounts
+    },
+
     coordinates: {
       latitude: { type: Number, required: true }, // Latitude coordinate
       longitude: { type: Number, required: true }, // Longitude coordinate
@@ -42,6 +47,21 @@ const tankSchema = new mongoose.Schema(
 tankSchema.set("toJSON", {
   virtuals: true, // Include virtuals when converting to JSON
 });
+
+// Function to generate default monthly data
+tankSchema.statics.generateMonthlyData = function () {
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1; // Get current month (1-12)
+  const daysInMonth = new Date(now.getFullYear(), currentMonth, 0).getDate();
+
+  let daysObject = {};
+  for (let i = 1; i <= daysInMonth; i++) {
+    daysObject[i] = 0; // Default value for each day
+  }
+
+  return { month: currentMonth, days: daysObject };
+};
+
 tankSchema.virtual("monthly_capacity").get(function () {
   const dailyUsage = (member) => {
     const age = Math.floor(
