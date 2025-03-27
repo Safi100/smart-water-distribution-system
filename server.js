@@ -31,12 +31,14 @@ const adminRoute = require("./routes/admin.route");
 const customerRoutes = require("./routes/customer.route");
 const CityRoute = require("./routes/city.route");
 const TankRoute = require("./routes/tank.route");
+const BillRoute = require("./routes/bill.route");
 
 app.use("/api", indexRoute);
 app.use("/api/admin", adminRoute);
 app.use("/api/customer", customerRoutes);
 app.use("/api/city", CityRoute);
 app.use("/api/tank", TankRoute);
+app.use("/api/bill", BillRoute);
 
 app.use((err, req, res, next) => {
   if (!err.message) err.message = "Internal Server Error";
@@ -57,6 +59,51 @@ cron.schedule("*/5 * * * *", async () => {
       console.error("Error fetching data from external API");
     });
 });
+
+const Tank = require("./models/tank.model");
+
+const resetMonthlyAmount = async () => {
+  try {
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1; // 1-12
+
+    // Fetch all tanks
+    const allTanks = await Tank.find();
+
+    for (const tank of allTanks) {
+      // Check if the stored month is different from the current month
+      if (
+        !tank.amount_per_month ||
+        tank.amount_per_month.month !== currentMonth
+      ) {
+        tank.amount_per_month = Tank.generateMonthlyData(); // Generate new data
+        await tank.save();
+        console.log(
+          `✔ Monthly reset done for tank ${tank._id} (all days set to 0)`
+        );
+      } else {
+        console.log(
+          `✔ Tank ${tank._id} already updated for month ${currentMonth}, skipping reset.`
+        );
+      }
+    }
+  } catch (error) {
+    console.error("❌ Error resetting monthly water amount:", error);
+  }
+};
+
+// Run every minute to check and reset if needed
+cron.schedule(
+  "0 */2 * * *",
+  async () => {
+    console.log("🔄 Checking if monthly reset is needed...");
+    await resetMonthlyAmount();
+  },
+  {
+    scheduled: true,
+    timezone: "UTC",
+  }
+);
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
