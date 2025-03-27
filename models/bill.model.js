@@ -35,4 +35,13 @@ const billSchema = mongoose.Schema(
   { timestamps: true }
 );
 
+const pricePerLiter = 0.0055;
+
+billSchema.virtual("price").get(function () {
+  return this.amount * pricePerLiter;
+});
+
+billSchema.set("toJSON", { virtuals: true });
+billSchema.set("toObject", { virtuals: true });
+
 module.exports = mongoose.model("Bill", billSchema);
