@@ -17,12 +17,34 @@ const tankSchema = new mongoose.Schema(
       required: true,
       min: 1,
     },
-    city: { type: mongoose.Schema.Types.ObjectId, ref: "City", required: true }, // Link tank to a city
+    hardware: {
+      ultrasonic_sensor: {
+        type: Number,
+        required: true,
+      },
+      waterflow_sensor: {
+        type: Number,
+        required: true,
+      },
+      solenoid_valve: {
+        type: Number,
+        required: true,
+      },
+      lcd_scl: {
+        type: Number,
+        required: true,
+      },
+      lcd_sda: {
+        type: Number,
+        required: true,
+      },
+    },
+    city: { type: mongoose.Schema.Types.ObjectId, ref: "City", required: true },
     family_members: [
       {
         name: { type: String, required: true },
-        dob: { type: Date, required: true }, // Date of Birth
-        identity_id: { type: String, required: true, unique: true }, // Unique identity for each member
+        dob: { type: Date, required: true },
+        identity_id: { type: String, required: true },
         gender: {
           type: String,
           enum: ["Male", "Female"],
@@ -32,8 +54,13 @@ const tankSchema = new mongoose.Schema(
     ],
     current_level: { type: Number, default: 0, min: 0 }, // Track current water level
     amount_per_month: {
-      month: { type: Number, required: true }, // Current month (1-12)
-      days: { type: Object, required: true }, // Object with keys as days (1-31) and values as amounts
+      type: {
+        month: { type: Number },
+        days: { type: Object },
+      },
+      default: function () {
+        return this.constructor.generateMonthlyData();
+      },
     },
 
     coordinates: {
