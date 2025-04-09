@@ -1,6 +1,7 @@
 const Customer = require("../models/customer.model");
 const City = require("../models/city.model");
 const Admin = require("../models/admin.model");
+const Bill = require("../models/bill.model");
 
 module.exports.generalSearch = async (req, res, next) => {
   try {
@@ -56,10 +57,14 @@ module.exports.dashboard_data = async (req, res, next) => {
     const totalCustomers = await Customer.countDocuments({});
     const totalEmployees = await Admin.countDocuments({});
     const totalCities = await City.countDocuments({});
+    const totalPaidBills = await Bill.countDocuments({ status: "Paid" });
+    const totalUnPaidBills = await Bill.countDocuments({ status: "Unpaid" });
     res.status(200).json({
       totalCustomers,
       totalEmployees,
       totalCities,
+      totalPaidBills,
+      totalUnPaidBills,
     });
   } catch (e) {
     next(e);
