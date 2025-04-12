@@ -1,17 +1,26 @@
 const Bill = require("../models/bill.model");
 const HandleError = require("../utils/HandleError");
 
-module.exports.getAllBills = async (req, res) => {
+module.exports.getAllBills = async (req, res, next) => {
   try {
-    const bills = await Bill.find().populate({
+    const { status, customerId } = req.query;
+    let query = {};
+    if (status) {
+      query.status = status;
+    }
+    if (customerId) {
+      query.customer = customerId;
+    }
+    const bills = await Bill.find(query).populate({
       path: "customer",
       select: "identity_number name email phone",
     });
     res.status(200).json(bills);
-  } catch (error) {
-    res.status(500).json({ message: "Error fetching bills", error });
+  } catch (e) {
+    next(e);
   }
 };
+
 module.exports.getBillProfile = async (req, res, next) => {
   try {
     const { id } = req.params;
