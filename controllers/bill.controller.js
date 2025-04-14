@@ -5,7 +5,7 @@ module.exports.getAllBills = async (req, res, next) => {
   try {
     const { status, customerId } = req.query;
     let query = {};
-    if (status) {
+    if (status != "All") {
       query.status = status;
     }
     if (customerId) {
