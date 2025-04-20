@@ -85,7 +85,15 @@ module.exports.addTank = async (req, res, next) => {
 };
 module.exports.tankProfile = async (req, res, next) => {
   try {
-    const tank = await Tank.findById(req.params.id).populate("owner city");
+    const tank = await Tank.findById(req.params.id)
+      .populate({
+        path: "city",
+        select: ["name"],
+      })
+      .populate({
+        path: "owner",
+        select: ["name", "email", "identity_number", "phone"],
+      });
     if (!tank) {
       throw new HandleError("Tank not found", 404);
     }
@@ -114,7 +122,16 @@ module.exports.ProfileTankForCustomer = async (req, res, next) => {
     if (!current_customer) {
       throw new HandleError("Customer not found", 404);
     }
-    const tank = await Tank.findById(req.params.id).populate("owner city");
+    const tank = await Tank.findById(req.params.id)
+      .populate({
+        path: "city",
+        select: ["name"],
+      })
+      .populate({
+        path: "owner",
+        select: ["name", "email", "identity_number", "phone"],
+      });
+
     if (!tank) {
       throw new HandleError("Tank not found", 404);
     }
