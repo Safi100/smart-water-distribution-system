@@ -61,6 +61,74 @@ cron.schedule("*/5 * * * *", async () => {
 });
 
 const Tank = require("./models/tank.model");
+const Bill = require("./models/bill.model");
+const Customer = require("./models/customer.model");
+
+// Calculate total water usage for a tank from its amount_per_month data
+const calculateTankUsage = (tank) => {
+  if (!tank.amount_per_month || !tank.amount_per_month.days) {
+    return 0;
+  }
+
+  return Object.values(tank.amount_per_month.days).reduce(
+    (sum, dayUsage) => sum + (dayUsage || 0),
+    0
+  );
+};
+
+// Generate bill for a specific tank
+// This function can be called directly or via the API endpoint
+const generateBillForTank = async (tank) => {
+  try {
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1; // 1-12
+    const currentYear = now.getFullYear();
+
+    // Skip if tank doesn't have amount_per_month data
+    if (!tank.amount_per_month || !tank.amount_per_month.days) {
+      console.log(`⚠️ Tank ${tank._id} has no usage data for billing`);
+      return null;
+    }
+
+    // Calculate total water usage for the month
+    const totalUsage = calculateTankUsage(tank);
+
+    // Only create a bill if there was actual usage
+    if (totalUsage <= 0) {
+      console.log(
+        `📊 Tank ${tank._id} has no usage (0 liters), no bill needed`
+      );
+      return null;
+    }
+
+    // Create a new bill
+    const bill = new Bill({
+      customer: tank.owner,
+      tank: tank._id,
+      amount: totalUsage,
+      year: currentYear,
+      month: currentMonth,
+    });
+
+    // Save the bill
+    await bill.save();
+
+    // Add bill to customer's bills array
+    const customer = await Customer.findById(tank.owner);
+    if (customer) {
+      customer.bills.push(bill._id);
+      await customer.save();
+    }
+
+    console.log(
+      `💰 Bill generated for tank ${tank._id} with usage: ${totalUsage} liters`
+    );
+    return bill;
+  } catch (error) {
+    console.error(`❌ Error generating bill for tank ${tank._id}:`, error);
+    return null;
+  }
+};
 
 const resetMonthlyAmount = async () => {
   try {
@@ -68,7 +136,7 @@ const resetMonthlyAmount = async () => {
     const currentMonth = now.getMonth() + 1; // 1-12
 
     // Fetch all tanks
-    const allTanks = await Tank.find();
+    const allTanks = await Tank.find().populate("owner");
 
     for (const tank of allTanks) {
       // Check if the stored month is different from the current month
@@ -76,6 +144,22 @@ const resetMonthlyAmount = async () => {
         !tank.amount_per_month ||
         tank.amount_per_month.month !== currentMonth
       ) {
+        // Generate bill before resetting only if usage > 0
+        if (tank.amount_per_month && tank.amount_per_month.days) {
+          const totalUsage = calculateTankUsage(tank);
+          if (totalUsage > 0) {
+            await generateBillForTank(tank);
+            console.log(
+              `📊 Tank ${tank._id} had usage of ${totalUsage} liters, bill generated`
+            );
+          } else {
+            console.log(
+              `📊 Tank ${tank._id} had no usage (0 liters), no bill generated`
+            );
+          }
+        }
+
+        // Reset monthly data
         tank.amount_per_month = Tank.generateMonthlyData(); // Generate new data
         await tank.save();
         console.log(
@@ -104,7 +188,7 @@ cron.schedule(
     timezone: "UTC",
   }
 );
-
+resetMonthlyAmount();
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
