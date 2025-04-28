@@ -4,6 +4,7 @@ const {
   tankProfile,
   getTanks,
   ProfileTankForCustomer,
+  fetchMainTank,
 } = require("../controllers/tank.controller");
 
 const router = express.Router({ mergeParams: true });
@@ -18,5 +19,7 @@ router.get("/customer-tanks", isLoggedIn, getTanks);
 router.get("/:id", isLoggedIn, isManagerOrAbove, tankProfile);
 // get tank profile - for customer
 router.get("/customer-tank/:id", isLoggedIn, ProfileTankForCustomer);
+// get main tank
+router.get("/main-tank/:id", isLoggedIn, isManagerOrAbove, fetchMainTank);
 
 module.exports = router;

@@ -1,7 +1,8 @@
 const Tank = require("../models/tank.model");
-const HandleError = require("../utils/HandleError"); // Assuming you have a custom error handling class
+const MainTank = require("../models/main_tank");
 const City = require("../models/city.model");
 const Customer = require("../models/customer.model");
+const HandleError = require("../utils/HandleError"); // Assuming you have a custom error handling class
 
 module.exports.addTank = async (req, res, next) => {
   try {
@@ -138,6 +139,18 @@ module.exports.ProfileTankForCustomer = async (req, res, next) => {
 
     if (tank.owner._id.toString() !== current_customer._id.toString()) {
       throw new HandleError("Unauthorized access", 401);
+    }
+    res.status(200).json(tank);
+  } catch (e) {
+    next(e);
+  }
+};
+module.exports.fetchMainTank = async (req, res, next) => {
+  try {
+    const id = req.params.id;
+    const tank = await MainTank.findById(id);
+    if (!tank) {
+      throw new HandleError("Tank not found", 404);
     }
     res.status(200).json(tank);
   } catch (e) {
