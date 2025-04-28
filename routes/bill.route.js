@@ -17,10 +17,10 @@ const { isLoggedIn, isManagerOrAbove } = require("../middleware");
 router.get("/", isLoggedIn, isManagerOrAbove, getAllBills);
 // get all bills for current customer
 router.get("/my-bills", isLoggedIn, getMyBills);
-// get bill profile
-router.get("/:id", isLoggedIn, isManagerOrAbove, getBillProfile);
 // get all bills for current customer
 router.get("/my-bills/:id", isLoggedIn, getMyBillProfile);
+// get bill profile
+router.get("/:id", isLoggedIn, isManagerOrAbove, getBillProfile);
 // pay bill
 router.post("/:id/pay", isLoggedIn, payBill);
 // pay bill by admin
