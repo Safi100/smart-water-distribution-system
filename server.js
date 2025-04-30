@@ -51,7 +51,7 @@ const axios = require("axios");
 
 cron.schedule("*/5 * * * *", async () => {
   await axios
-    .get("https://smart-water-distribution-system.onrender.com/")
+    .get("https://smart-water-distribution-system-q6x7.onrender.com/")
     .then((response) => {
       console.log("Data fetched from external API");
     })
