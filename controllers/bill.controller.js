@@ -57,11 +57,16 @@ module.exports.getMyBillProfile = async (req, res, next) => {
   try {
     const { id } = req.params;
     const bill = await Bill.findById(id);
+    if (!bill) {
+      throw new HandleError("Bill not found", 404);
+    }
     if (bill.customer.toString() !== req.user.id) {
       throw new HandleError("This is not your bill", 403);
     }
     res.status(200).json(bill);
   } catch (e) {
+    console.log(e);
+
     next(e);
   }
 };
