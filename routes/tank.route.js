@@ -5,6 +5,8 @@ const {
   getTanks,
   ProfileTankForCustomer,
   fetchMainTank,
+  updateTank,
+  updateTankForCustomer,
 } = require("../controllers/tank.controller");
 
 const router = express.Router({ mergeParams: true });
@@ -21,5 +23,7 @@ router.get("/:id", isLoggedIn, isManagerOrAbove, tankProfile);
 router.get("/customer-tank/:id", isLoggedIn, ProfileTankForCustomer);
 // get main tank
 router.get("/main-tank/:id", isLoggedIn, isManagerOrAbove, fetchMainTank);
+// update tank - admin/manager only
+router.put("/:id", isLoggedIn, isManagerOrAbove, updateTank);
 
 module.exports = router;

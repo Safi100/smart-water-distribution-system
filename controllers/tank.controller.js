@@ -157,3 +157,173 @@ module.exports.fetchMainTank = async (req, res, next) => {
     next(e);
   }
 };
+
+module.exports.updateTank = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { tank_size, coordinates, hardware, family_members, city } = req.body;
+
+    // Find the tank
+    const tank = await Tank.findById(id);
+    if (!tank) {
+      throw new HandleError("Tank not found", 404);
+    }
+
+    // Prepare update object
+    const updateData = {};
+
+    // Update tank size if provided
+    if (tank_size) {
+      if (
+        tank_size.height &&
+        typeof tank_size.height === "number" &&
+        tank_size.height >= 1
+      ) {
+        updateData.height = tank_size.height;
+      }
+      if (
+        tank_size.radius &&
+        typeof tank_size.radius === "number" &&
+        tank_size.radius >= 1
+      ) {
+        updateData.radius = tank_size.radius;
+      }
+    }
+
+    // Update coordinates if provided
+    if (coordinates) {
+      if (
+        coordinates.latitude !== undefined &&
+        coordinates.longitude !== undefined &&
+        typeof coordinates.latitude === "number" &&
+        typeof coordinates.longitude === "number"
+      ) {
+        updateData.coordinates = {
+          latitude: coordinates.latitude,
+          longitude: coordinates.longitude,
+        };
+      } else if (
+        coordinates.latitude !== undefined ||
+        coordinates.longitude !== undefined
+      ) {
+        throw new HandleError(
+          "Both latitude and longitude must be provided as valid numbers",
+          400
+        );
+      }
+    }
+
+    // Update hardware if provided
+    if (hardware) {
+      const hardwareFields = [
+        "ultrasonic_sensor",
+        "waterflow_sensor",
+        "solenoid_valve",
+        "lcd_scl",
+        "lcd_sda",
+      ];
+
+      const updatedHardware = {};
+      let hasValidHardwareUpdate = false;
+
+      hardwareFields.forEach((field) => {
+        if (
+          hardware[field] !== undefined &&
+          typeof hardware[field] === "number"
+        ) {
+          updatedHardware[field] = hardware[field];
+          hasValidHardwareUpdate = true;
+        }
+      });
+
+      if (hasValidHardwareUpdate) {
+        updateData.hardware = {
+          ...tank.hardware.toObject(),
+          ...updatedHardware,
+        };
+      }
+    }
+
+    // Update family members if provided
+    if (family_members) {
+      if (!Array.isArray(family_members) || family_members.length === 0) {
+        throw new HandleError(
+          "Family members should be an array and at least one member",
+          400
+        );
+      }
+
+      // Validate that each family member has necessary fields
+      family_members.forEach((member) => {
+        const { name, dob, identity_id, gender } = member;
+        if (!name || !dob || !identity_id || !gender) {
+          throw new HandleError(
+            "Each family member must have a name, dob, identity_id, and gender",
+            400
+          );
+        }
+        if (!["Male", "Female"].includes(gender)) {
+          throw new HandleError(
+            "Gender must be either 'Male' or 'Female'",
+            400
+          );
+        }
+      });
+
+      updateData.family_members = family_members;
+    }
+
+    // Update city if provided
+    if (city) {
+      const cityExists = await City.findById(city);
+      if (!cityExists) {
+        throw new HandleError("Invalid city id", 400);
+      }
+
+      // If city is changing, update the references
+      if (tank.city.toString() !== city) {
+        // Remove tank from old city
+        const oldCity = await City.findById(tank.city);
+        if (oldCity) {
+          oldCity.tanks = oldCity.tanks.filter(
+            (tankId) => tankId.toString() !== id
+          );
+          await oldCity.save();
+        }
+
+        // Add tank to new city
+        cityExists.tanks.push(id);
+        await cityExists.save();
+
+        updateData.city = city;
+      }
+    }
+
+    // Update the tank if there are changes
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ error: "No valid update data provided" });
+    }
+
+    // Apply updates
+    const updatedTank = await Tank.findByIdAndUpdate(
+      id,
+      { $set: updateData },
+      { new: true, runValidators: true }
+    )
+      .populate({
+        path: "city",
+        select: ["name"],
+      })
+      .populate({
+        path: "owner",
+        select: ["name", "email", "identity_number", "phone"],
+      });
+
+    res.status(200).json({
+      message: "Tank updated successfully",
+      tank: updatedTank,
+    });
+  } catch (e) {
+    next(e);
+  }
+};
