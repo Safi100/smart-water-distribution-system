@@ -1,4 +1,5 @@
 const Customer = require("../models/customer.model");
+const Tank = require("../models/tank.model");
 const HandleError = require("../utils/HandleError");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
@@ -240,25 +241,26 @@ module.exports.fetchProile = async (req, res, next) => {
 };
 module.exports.currentUser = async (req, res, next) => {
   try {
-    const user = await Customer.findById(req.user.id).populate({
-      path: "main_tank",
-      select: "-owner -hardware",
-      populate: {
-        path: "city",
-        select: "name",
-      },
-    });
+    const user = await Customer.findById(req.user.id).lean();
     if (!user) {
       throw new HandleError("User not found", 404);
     }
+    const main_tank = await Tank.findById(user.main_tank.toString())
+      .populate({
+        path: "city",
+        select: "name",
+      })
+      .select("-owner -hardware -family_members");
+    user.main_tank = main_tank;
     // extract password
-    const { password: _, ...userWithoutPassword } = user.toObject();
+    const { password: _, ...userWithoutPassword } = user;
 
     res.status(200).json(userWithoutPassword);
   } catch (e) {
     next(e);
   }
 };
+
 module.exports.updateAvatar = async (req, res, next) => {
   try {
     const { avatar_url } = req.body;
