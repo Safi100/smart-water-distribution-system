@@ -84,6 +84,10 @@ const generateBillForTank = async (tank) => {
     const currentMonth = now.getMonth() + 1; // 1-12
     const currentYear = now.getFullYear();
 
+    // Get the previous month (1-12) and handle year wrap
+    const billMonth = currentMonth === 1 ? 12 : currentMonth - 1;
+    const billYear = currentMonth === 1 ? currentYear - 1 : currentYear;
+
     // Skip if tank doesn't have amount_per_month data
     if (!tank.amount_per_month || !tank.amount_per_month.days) {
       console.log(`⚠️ Tank ${tank._id} has no usage data for billing`);
@@ -106,8 +110,8 @@ const generateBillForTank = async (tank) => {
       customer: tank.owner,
       tank: tank._id,
       amount: totalUsage,
-      year: currentYear,
-      month: currentMonth,
+      year: billYear,
+      month: billMonth,
     });
 
     // Save the bill
@@ -121,7 +125,7 @@ const generateBillForTank = async (tank) => {
     }
 
     console.log(
-      `💰 Bill generated for tank ${tank._id} with usage: ${totalUsage} liters`
+      `💰 Bill generated for tank ${tank._id} with usage: ${totalUsage} liters for ${billMonth}/${billYear}`
     );
     return bill;
   } catch (error) {
