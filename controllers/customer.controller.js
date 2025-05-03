@@ -240,7 +240,14 @@ module.exports.fetchProile = async (req, res, next) => {
 };
 module.exports.currentUser = async (req, res, next) => {
   try {
-    const user = await Customer.findById(req.user.id);
+    const user = await Customer.findById(req.user.id).populate({
+      path: "main_tank",
+      select: "-owner -hardware",
+      populate: {
+        path: "city",
+        select: "name",
+      },
+    });
     if (!user) {
       throw new HandleError("User not found", 404);
     }
