@@ -252,3 +252,21 @@ module.exports.currentUser = async (req, res, next) => {
     next(e);
   }
 };
+module.exports.updateAvatar = async (req, res, next) => {
+  try {
+    const { avatar_url } = req.body;
+    // Validate required fields
+    if (!avatar_url) {
+      throw new HandleError("Avatar URL is required", 400);
+    }
+    const customer = await Customer.findById(req.user.id);
+    if (!customer) {
+      throw new HandleError("Customer not found", 404);
+    }
+    customer.avatar_url = avatar_url;
+    await customer.save();
+    res.status(200).json({ message: "Avatar updated successfully", customer });
+  } catch (error) {
+    next(error);
+  }
+};

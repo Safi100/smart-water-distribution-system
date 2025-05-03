@@ -9,6 +9,7 @@ const {
   changePassword,
   fetchProile,
   currentUser,
+  updateAvatar,
 } = require("../controllers/customer.controller");
 
 const router = express.Router({ mergeParams: true });
@@ -21,6 +22,8 @@ router.post("/login", loginCustomer);
 router.post("/forgot-password", forgotPassword);
 // current user
 router.get("/current-user", isLoggedIn, currentUser);
+// upload avatar
+router.put("/upload-avatar", isLoggedIn, updateAvatar);
 // update customer data - current customer
 router.put("/update-data", isLoggedIn, updateCustomer);
 // update customer password - current customer
