@@ -103,7 +103,7 @@ tankSchema.virtual("monthly_capacity").get(function () {
     return member.gender === "Male" ? 120 : 100; // Elderly
   };
 
-  return this.family_members.reduce(
+  return this.family_members?.reduce(
     (total, member) => total + dailyUsage(member) * 30,
     0
   );
