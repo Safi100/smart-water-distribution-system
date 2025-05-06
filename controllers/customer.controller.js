@@ -245,18 +245,26 @@ module.exports.currentUser = async (req, res, next) => {
     if (!user) {
       throw new HandleError("User not found", 404);
     }
-    const main_tank = await Tank.findById(user.main_tank.toString())
-      .populate({
-        path: "city",
-        select: "name",
-      })
-      .select("-owner -hardware -family_members");
+
+    let main_tank = null;
+
+    if (user.main_tank) {
+      main_tank = await Tank.findById(user.main_tank.toString())
+        .populate({
+          path: "city",
+          select: "name",
+        })
+        .select("-owner -hardware -family_members");
+    }
+
     user.main_tank = main_tank;
+
     // extract password
     const { password: _, ...userWithoutPassword } = user;
 
     res.status(200).json(userWithoutPassword);
   } catch (e) {
+    console.log(e);
     next(e);
   }
 };
