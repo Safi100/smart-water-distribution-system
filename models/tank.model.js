@@ -18,7 +18,11 @@ const tankSchema = new mongoose.Schema(
       min: 1,
     },
     hardware: {
-      ultrasonic_sensor: {
+      ultrasonic_sensor_echo: {
+        type: Number,
+        required: true,
+      },
+      ultrasonic_sensor_trig: {
         type: Number,
         required: true,
       },
