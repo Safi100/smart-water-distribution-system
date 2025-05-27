@@ -13,6 +13,16 @@ const tankSchema = new mongoose.Schema(
       min: 1,
     },
     current_level: { type: Number, default: 0, min: 0 }, // Track current water level
+    hardware: {
+      ultrasonic_sensor_echo: {
+        type: Number,
+        required: true,
+      },
+      ultrasonic_sensor_trig: {
+        type: Number,
+        required: true,
+      },
+    },
   },
   { timestamps: true }
 );
