@@ -382,3 +382,23 @@ module.exports.readTankValueUltraSonic = async (req, res, next) => {
     next(e);
   }
 };
+module.exports.readMainTankValueUltraSonic = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const tank = await MainTank.findById(id).select(
+      "hardware height radius current_level max_capacity"
+    );
+    if (!tank) throw new HandleError("Tank not found", 404);
+
+    const response = await axios.post(
+      "http://localhost:5000/calculate_tank_capacity",
+      tank
+    );
+    tank.current_level = response.data.estimated_volume_liters;
+    await tank.save();
+    res.status(200).json(response.data);
+  } catch (e) {
+    console.error("Error in readTankValueUltraSonic:", e);
+    next(e);
+  }
+};

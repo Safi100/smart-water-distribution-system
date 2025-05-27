@@ -8,6 +8,7 @@ const {
   updateTank,
   setCustomerMainTank,
   readTankValueUltraSonic,
+  readMainTankValueUltraSonic,
 } = require("../controllers/tank.controller");
 
 const router = express.Router({ mergeParams: true });
@@ -22,6 +23,13 @@ router.get("/customer-tanks", isLoggedIn, getTanks);
 router.get("/:id", isLoggedIn, isManagerOrAbove, tankProfile);
 // read tank value - liter - for customer
 router.get("/tank-value-ultrasonic/:id", isLoggedIn, readTankValueUltraSonic);
+// read main tank value - liter - for admin
+router.get(
+  "/main-tank-value-ultrasonic/:id",
+  isLoggedIn,
+  isManagerOrAbove,
+  readMainTankValueUltraSonic
+);
 // get tank profile - for customer
 router.get("/customer-tank/:id", isLoggedIn, ProfileTankForCustomer);
 // set tank main - for customer
