@@ -3,6 +3,7 @@ const MainTank = require("../models/main_tank");
 const City = require("../models/city.model");
 const Customer = require("../models/customer.model");
 const HandleError = require("../utils/HandleError"); // Assuming you have a custom error handling class
+const axios = require("axios");
 
 module.exports.addTank = async (req, res, next) => {
   try {
@@ -65,7 +66,8 @@ module.exports.addTank = async (req, res, next) => {
         latitude: coordinates.latitude,
       },
       hardware: {
-        ultrasonic_sensor: hardware.ultrasonic_sensor,
+        ultrasonic_sensor_trig: hardware.ultrasonic_sensor_trig,
+        ultrasonic_sensor_echo: hardware.ultrasonic_sensor_echo,
         waterflow_sensor: hardware.waterflow_sensor,
         solenoid_valve: hardware.solenoid_valve,
         lcd_scl: hardware.lcd_scl,
@@ -216,7 +218,8 @@ module.exports.updateTank = async (req, res, next) => {
     // Update hardware if provided
     if (hardware) {
       const hardwareFields = [
-        "ultrasonic_sensor",
+        "ultrasonic_sensor_trig",
+        "ultrasonic_sensor_echo",
         "waterflow_sensor",
         "solenoid_valve",
         "lcd_scl",
@@ -354,6 +357,28 @@ module.exports.setCustomerMainTank = async (req, res, next) => {
   } catch (e) {
     console.log(e);
 
+    next(e);
+  }
+};
+module.exports.readTankValueUltraSonic = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const tank = await Tank.findById(id).select(
+      "hardware owner height radius current_level max_capacity"
+    );
+    if (!tank) throw new HandleError("Tank not found", 404);
+    if (tank.owner.toString() !== req.user.id) {
+      throw new HandleError("You are not the owner of this tank", 403);
+    }
+    const response = await axios.post(
+      "http://localhost:5000/calculate_tank_capacity",
+      tank
+    );
+    tank.current_level = response.data.estimated_volume_liters;
+    await tank.save();
+    res.status(200).json(response.data);
+  } catch (e) {
+    console.error("Error in readTankValueUltraSonic:", e);
     next(e);
   }
 };
