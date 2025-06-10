@@ -1,5 +1,5 @@
 const Tank = require("../models/tank.model");
-const MainTank = require("../models/main_tank");
+const MainTank = require("../models/main_tank.model");
 const City = require("../models/city.model");
 const Customer = require("../models/customer.model");
 const HandleError = require("../utils/HandleError"); // Assuming you have a custom error handling class
