@@ -5,8 +5,13 @@ const cors = require("cors");
 const mongoose = require("mongoose");
 const cookieParser = require("cookie-parser");
 const cron = require("node-cron");
+const http = require("http");
 
 const app = express();
+const server = http.createServer(app);
+const { initWebSocket, broadcast } = require("./WebSocket");
+
+initWebSocket(server);
 
 mongoose
   .connect(process.env.DATABASE)
@@ -15,7 +20,7 @@ mongoose
 
 app.use(
   cors({
-    origin: ["http://localhost:3000"],
+    origin: ["*"],
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     credentials: true,
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -46,7 +51,6 @@ app.use((err, req, res, next) => {
   console.log(err.message);
   res.status(statusCode).json(err.message);
 });
-
 const axios = require("axios");
 
 cron.schedule("*/5 * * * *", async () => {
@@ -64,6 +68,16 @@ const Tank = require("./models/tank.model");
 const Bill = require("./models/bill.model");
 const Customer = require("./models/customer.model");
 const { sendNotification } = require("./utils/Notification");
+
+const sendNotificationWithSocket = async (message, userId) => {
+  await sendNotification(message, userId);
+
+  broadcast({
+    type: "new_notification",
+    userId: userId,
+    message: message,
+  });
+};
 
 // Calculate total water usage for a tank from its amount_per_month data
 const calculateTankUsage = (tank) => {
@@ -114,12 +128,11 @@ const generateBillForTank = async (tank) => {
       year: billYear,
       month: billMonth,
     });
-    // send notification to customer
-    await sendNotification(
+    // send websocket + database notification
+    await sendNotificationWithSocket(
       `Your tank ${tank._id} usage for ${billMonth}/${billYear} is ${totalUsage} liters`,
       tank.owner
     );
-
     // Save the bill
     await bill.save();
 
@@ -199,6 +212,6 @@ cron.schedule(
   }
 );
 const port = process.env.PORT || 3000;
-app.listen(port, () => {
+server.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });

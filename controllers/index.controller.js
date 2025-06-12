@@ -10,6 +10,7 @@ const {
   calculateWaterUsage,
 } = require("../utils/CheckPumpFunctions");
 const { sendNotification } = require("../utils/Notification");
+const { broadcast } = require("../WebSocket");
 
 module.exports.generalSearch = async (req, res, next) => {
   try {
@@ -79,6 +80,15 @@ module.exports.dashboard_data = async (req, res, next) => {
   }
 };
 
+const sendNotificationWithSocket = async (message, userId) => {
+  await sendNotification(message, userId);
+  broadcast({
+    type: "new_notification",
+    userId: userId,
+    message: message,
+  });
+};
+
 module.exports.pumpWater = async (req, res, next) => {
   try {
     const tanks_to_pump = [];
@@ -111,7 +121,7 @@ module.exports.pumpWater = async (req, res, next) => {
       } else if (tank.billsCountNotPaid >= 2) {
         console.log(tank.owner);
 
-        await sendNotification(
+        await sendNotificationWithSocket(
           `Tank ${tank._id} has more than one unpaid bills, we can't pump water for you now.`,
           tank.owner
         );
