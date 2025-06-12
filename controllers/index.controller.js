@@ -10,7 +10,7 @@ const {
   calculateWaterUsage,
 } = require("../utils/CheckPumpFunctions");
 const { sendNotification } = require("../utils/Notification");
-const { broadcast } = require("../WebSocket");
+const socket = require("../Socket");
 
 module.exports.generalSearch = async (req, res, next) => {
   try {
@@ -81,11 +81,12 @@ module.exports.dashboard_data = async (req, res, next) => {
 };
 
 const sendNotificationWithSocket = async (message, userId) => {
-  await sendNotification(message, userId);
-  broadcast({
-    type: "new_notification",
+  const notification = await sendNotification(message, userId);
+
+  const io = socket.getIO();
+  io.emit("new_notification", {
     userId: userId,
-    message: message,
+    notification,
   });
 };
 
