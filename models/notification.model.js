@@ -14,7 +14,7 @@ const NotificationSchema = new Schema({
   createdAt: {
     type: Date,
     default: Date.now,
-    expires: 60 * 60 * 24 * 1, // Expires in 24 hours
+    expires: 60 * 60 * 24 * 3, // Expires in 3 days
   },
 });
 
