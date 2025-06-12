@@ -6,7 +6,7 @@ const mongoose = require("mongoose");
 const cookieParser = require("cookie-parser");
 const cron = require("node-cron");
 const http = require("http");
-const socket = require("./socket");
+const socket = require("./Socket");
 
 const app = express();
 const server = http.createServer(app);
