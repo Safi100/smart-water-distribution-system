@@ -4,6 +4,7 @@ const HandleError = require("../utils/HandleError");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { sendEmail } = require("../utils/SendEmail");
+const { getAllNotifications } = require("../utils/Notification");
 
 module.exports.addCustomer = async (req, res, next) => {
   try {
@@ -230,7 +231,9 @@ module.exports.changePassword = async (req, res, next) => {
 };
 module.exports.fetchProile = async (req, res, next) => {
   try {
-    const customer = await Customer.findById(req.user.id).select("-password");
+    const customer = await Customer.findById(req.user.id)
+      .select("-password")
+      .lean();
     if (!customer) {
       throw new HandleError("Customer not found", 404);
     }
@@ -259,10 +262,16 @@ module.exports.currentUser = async (req, res, next) => {
 
     user.main_tank = main_tank;
 
-    // extract password
+    let notifications = await getAllNotifications(user._id);
+
     const { password: _, ...userWithoutPassword } = user;
 
-    res.status(200).json(userWithoutPassword);
+    const finalResponse = {
+      ...userWithoutPassword,
+      notifications,
+    };
+
+    res.status(200).json(finalResponse);
   } catch (e) {
     console.log(e);
     next(e);
