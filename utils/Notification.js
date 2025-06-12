@@ -8,6 +8,7 @@ module.exports.sendNotification = async (message, userID) => {
     });
     await notification.save();
     console.log(`Notification sent to user ${userID}: ${message}`);
+    return notification;
   } catch (error) {
     console.error(`Error sending notification: ${error.message}`);
   }
