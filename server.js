@@ -52,7 +52,7 @@ app.use((err, req, res, next) => {
 const axios = require("axios");
 cron.schedule("*/5 * * * *", async () => {
   await axios
-    .get("https://smart-water-distribution-system-q6x7.onrender.com/")
+    .get(process.env.SERVER_ALIVE_ENDPOINT)
     .then(() => console.log("Data fetched from external API"))
     .catch((error) => console.error("Error fetching data from external API"));
 });
