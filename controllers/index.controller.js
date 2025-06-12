@@ -5,6 +5,11 @@ const Bill = require("../models/bill.model");
 const MainTank = require("../models/main_tank.model");
 const Tank = require("../models/tank.model");
 const HandleError = require("../utils/HandleError");
+const {
+  CountOfBillsNotPaid,
+  calculateWaterUsage,
+} = require("../utils/CheckPumpFunctions");
+const { sendNotification } = require("../utils/Notification");
 
 module.exports.generalSearch = async (req, res, next) => {
   try {
@@ -76,28 +81,45 @@ module.exports.dashboard_data = async (req, res, next) => {
 
 module.exports.pumpWater = async (req, res, next) => {
   try {
+    const tanks_to_pump = [];
     const main_tank = await MainTank.findOne();
     if (!main_tank) throw new HandleError("No main tank found", 404);
-    let tanks = await Tank.find().lean();
+    let tanks = await Tank.find();
 
     if (!tanks || tanks.length === 0)
       throw new HandleError("No tanks found to pump", 404);
-    res.status(200).json(tanks);
+
+    tanks = await Promise.all(
+      tanks.map(async (tank) => {
+        const obj = tank.toObject({ virtuals: true });
+        const billsCount = await CountOfBillsNotPaid(obj._id);
+        return {
+          ...obj,
+          usage: calculateWaterUsage(obj),
+          remainCapacity:
+            obj.monthly_capacity - Number(calculateWaterUsage(obj)),
+          billsCountNotPaid: billsCount,
+          isTankFull:
+            Number(obj.max_capacity) > 0 &&
+            Number(obj.current_level) / Number(obj.max_capacity) >= 0.8,
+        };
+      })
+    );
+    for (let tank of tanks) {
+      if (tank.billsCountNotPaid < 2 && tank.isTankFull === false) {
+        tanks_to_pump.push(tank);
+      } else if (tank.billsCountNotPaid >= 2) {
+        console.log(tank.owner);
+
+        await sendNotification(
+          `Tank ${tank._id} has more than one unpaid bills, we can't pump water for you now.`,
+          tank.owner
+        );
+      }
+    }
+    res.status(200).json(tanks_to_pump);
     // const response = await axios.post("http://localhost:5000/pump_water");
   } catch (e) {
     next(e);
   }
 };
-
-function calculateWaterUsage(tank) {
-  const dailyUsage = tank.amount_per_month?.days || {};
-  const totalUsed = Object.values(dailyUsage).reduce(
-    (sum, val) => sum + val,
-    0
-  );
-  return;
-}
-
-async function CountOfBillsNotPaid(tankId) {
-  const bills = await Bill.find({ tank: tankId, status: "Unpaid" });
-}
