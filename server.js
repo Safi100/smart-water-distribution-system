@@ -6,31 +6,26 @@ const mongoose = require("mongoose");
 const cookieParser = require("cookie-parser");
 const cron = require("node-cron");
 const http = require("http");
+const socket = require("./socket");
 
 const app = express();
 const server = http.createServer(app);
-const { initWebSocket, broadcast } = require("./WebSocket");
 
-initWebSocket(server);
+const io = socket.init(server);
 
+// MongoDB
 mongoose
   .connect(process.env.DATABASE)
   .then(() => console.log("Connected to MongoDB"))
   .catch((err) => console.error("Could not connect to MongoDB:", err));
 
-app.use(
-  cors({
-    origin: ["*"],
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
-    credentials: true,
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
+// Middleware
+app.use(cors());
 app.use(express.json());
 app.use(morgan("dev"));
 app.use(cookieParser());
 
-// routes
+// Routes
 const indexRoute = require("./routes/index.route");
 const adminRoute = require("./routes/admin.route");
 const customerRoutes = require("./routes/customer.route");
@@ -45,74 +40,56 @@ app.use("/api/city", CityRoute);
 app.use("/api/tank", TankRoute);
 app.use("/api/bill", BillRoute);
 
+// Error Handler
 app.use((err, req, res, next) => {
   if (!err.message) err.message = "Internal Server Error";
   const { statusCode = 500 } = err;
   console.log(err.message);
   res.status(statusCode).json(err.message);
 });
-const axios = require("axios");
 
+// Cron Keep-alive
+const axios = require("axios");
 cron.schedule("*/5 * * * *", async () => {
   await axios
     .get("https://smart-water-distribution-system-q6x7.onrender.com/")
-    .then((response) => {
-      console.log("Data fetched from external API");
-    })
-    .catch((error) => {
-      console.error("Error fetching data from external API");
-    });
+    .then(() => console.log("Data fetched from external API"))
+    .catch((error) => console.error("Error fetching data from external API"));
 });
 
+// Models
 const Tank = require("./models/tank.model");
 const Bill = require("./models/bill.model");
 const Customer = require("./models/customer.model");
 const { sendNotification } = require("./utils/Notification");
 
 const sendNotificationWithSocket = async (message, userId) => {
-  await sendNotification(message, userId);
-
-  broadcast({
-    type: "new_notification",
-    userId: userId,
-    message: message,
-  });
+  const notification = await sendNotification(message, userId);
+  socket.getIO().emit("new_notification", { userId, notification });
 };
 
-// Calculate total water usage for a tank from its amount_per_month data
 const calculateTankUsage = (tank) => {
-  if (!tank.amount_per_month || !tank.amount_per_month.days) {
-    return 0;
-  }
-
+  if (!tank.amount_per_month || !tank.amount_per_month.days) return 0;
   return Object.values(tank.amount_per_month.days).reduce(
     (sum, dayUsage) => sum + (dayUsage || 0),
     0
   );
 };
 
-// Generate bill for a specific tank
-// This function can be called directly or via the API endpoint
 const generateBillForTank = async (tank) => {
   try {
     const now = new Date();
-    const currentMonth = now.getMonth() + 1; // 1-12
+    const currentMonth = now.getMonth() + 1;
     const currentYear = now.getFullYear();
-
-    // Get the previous month (1-12) and handle year wrap
     const billMonth = currentMonth === 1 ? 12 : currentMonth - 1;
     const billYear = currentMonth === 1 ? currentYear - 1 : currentYear;
 
-    // Skip if tank doesn't have amount_per_month data
     if (!tank.amount_per_month || !tank.amount_per_month.days) {
       console.log(`⚠️ Tank ${tank._id} has no usage data for billing`);
       return null;
     }
 
-    // Calculate total water usage for the month
     const totalUsage = calculateTankUsage(tank);
-
-    // Only create a bill if there was actual usage
     if (totalUsage <= 0) {
       console.log(
         `📊 Tank ${tank._id} has no usage (0 liters), no bill needed`
@@ -120,7 +97,6 @@ const generateBillForTank = async (tank) => {
       return null;
     }
 
-    // Create a new bill
     const bill = new Bill({
       customer: tank.owner,
       tank: tank._id,
@@ -128,15 +104,14 @@ const generateBillForTank = async (tank) => {
       year: billYear,
       month: billMonth,
     });
-    // send websocket + database notification
+
     await sendNotificationWithSocket(
       `Your tank ${tank._id} usage for ${billMonth}/${billYear} is ${totalUsage} liters`,
       tank.owner
     );
-    // Save the bill
+
     await bill.save();
 
-    // Add bill to customer's bills array
     const customer = await Customer.findById(tank.owner);
     if (customer) {
       customer.bills.push(bill._id);
@@ -156,18 +131,15 @@ const generateBillForTank = async (tank) => {
 const resetMonthlyAmount = async () => {
   try {
     const now = new Date();
-    const currentMonth = now.getMonth() + 1; // 1-12
+    const currentMonth = now.getMonth() + 1;
 
-    // Fetch all tanks
     const allTanks = await Tank.find().populate("owner");
 
     for (const tank of allTanks) {
-      // Check if the stored month is different from the current month
       if (
         !tank.amount_per_month ||
         tank.amount_per_month.month !== currentMonth
       ) {
-        // Generate bill before resetting only if usage > 0
         if (tank.amount_per_month && tank.amount_per_month.days) {
           const totalUsage = calculateTankUsage(tank);
           if (totalUsage > 0) {
@@ -182,8 +154,7 @@ const resetMonthlyAmount = async () => {
           }
         }
 
-        // Reset monthly data
-        tank.amount_per_month = Tank.generateMonthlyData(); // Generate new data
+        tank.amount_per_month = Tank.generateMonthlyData();
         await tank.save();
         console.log(
           `✔ Monthly reset done for tank ${tank._id} (all days set to 0)`
@@ -199,19 +170,16 @@ const resetMonthlyAmount = async () => {
   }
 };
 
-// Run every minute to check and reset if needed
 cron.schedule(
   "0 */2 * * *",
   async () => {
     console.log("🔄 Checking if monthly reset is needed...");
     await resetMonthlyAmount();
   },
-  {
-    scheduled: true,
-    timezone: "UTC",
-  }
+  { scheduled: true, timezone: "UTC" }
 );
+
 const port = process.env.PORT || 3000;
 server.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+  console.log(`🚀 Server running on port ${port}`);
 });
