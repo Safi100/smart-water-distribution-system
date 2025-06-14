@@ -103,7 +103,7 @@ tankSchema.virtual("monthly_capacity").get(function () {
     if (age <= 5) return 50; // Infants & toddlers
     if (age <= 12) return member.gender === "Male" ? 80 : 75; // Children
     if (age <= 17) return member.gender === "Male" ? 120 : 100; // Teenagers
-    if (age <= 59) return member.gender === "Male" ? 140 : 110; // Adults
+    if (age <= 59) return member.gender === "Male" ? 140 : 120; // Adults
     return member.gender === "Male" ? 120 : 100; // Elderly
   };
 
