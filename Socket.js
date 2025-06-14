@@ -5,8 +5,10 @@ module.exports = {
     const { Server } = require("socket.io");
     io = new Server(server, {
       cors: {
-        origin: "*",
+        origin: ["*"],
         methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+        allowedHeaders: ["Content-Type"],
+        credentials: true,
       },
     });
 
