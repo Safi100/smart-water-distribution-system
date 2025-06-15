@@ -339,6 +339,7 @@ module.exports.setCustomerMainTank = async (req, res, next) => {
     if (!current_customer) {
       throw new HandleError("Customer not found", 404);
     }
+    console.log(current_customer);
 
     const tank = await Tank.findById(id).select("_id owner family_members");
 
@@ -348,7 +349,7 @@ module.exports.setCustomerMainTank = async (req, res, next) => {
     if (tank.owner.toString() !== current_customer._id.toString()) {
       throw new HandleError("Unauthorized access", 401);
     }
-    if (current_customer.main_tank._id.toString() === tank._id.toString()) {
+    if (current_customer.main_tank?._id.toString() === tank._id.toString()) {
       return res.status(200).json("Customer's main tank is already set");
     }
     current_customer.main_tank = tank._id;
