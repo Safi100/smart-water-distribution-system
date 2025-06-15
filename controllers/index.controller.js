@@ -128,8 +128,11 @@ module.exports.pumpWater = async (req, res, next) => {
         );
       }
     }
-    res.status(200).json(tanks_to_pump);
-    // const response = await axios.post("http://localhost:5000/pump_water");
+    const response = await axios.post(
+      "http://localhost:5000/pump_water",
+      tanks_to_pump
+    );
+    res.status(200).json(response);
   } catch (e) {
     next(e);
   }
