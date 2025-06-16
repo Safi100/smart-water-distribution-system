@@ -12,18 +12,10 @@ module.exports.getAllBills = async (req, res, next) => {
     if (customerId) {
       query.customer = customerId;
     }
-    const bills = await Bill.find(query)
-      .populate({
-        path: "customer",
-        select: "identity_number name email phone",
-      })
-      .populate({
-        path: "tank",
-        populate: {
-          path: "city",
-          select: "name",
-        },
-      });
+    const bills = await Bill.find(query).populate({
+      path: "customer",
+      select: "identity_number name email phone",
+    });
     res.status(200).json(bills);
   } catch (e) {
     next(e);
@@ -55,7 +47,13 @@ module.exports.getBillProfile = async (req, res, next) => {
 
 module.exports.getMyBills = async (req, res) => {
   try {
-    const bills = await Bill.find({ customer: req.user.id });
+    const bills = await Bill.find({ customer: req.user.id }).populate({
+      path: "tank",
+      populate: {
+        path: "city",
+        select: "name",
+      },
+    });
     res.status(200).json(bills);
   } catch (e) {
     next(e);
