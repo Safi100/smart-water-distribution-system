@@ -12,10 +12,18 @@ module.exports.getAllBills = async (req, res, next) => {
     if (customerId) {
       query.customer = customerId;
     }
-    const bills = await Bill.find(query).populate({
-      path: "customer",
-      select: "identity_number name email phone",
-    });
+    const bills = await Bill.find(query)
+      .populate({
+        path: "customer",
+        select: "identity_number name email phone",
+      })
+      .populate({
+        path: "tank",
+        populate: {
+          path: "city",
+          select: "name",
+        },
+      });
     res.status(200).json(bills);
   } catch (e) {
     next(e);
