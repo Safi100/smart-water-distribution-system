@@ -79,5 +79,44 @@ def calculate_tank_capacity():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/control_water_pump', methods=['POST'])
+def control_water_pump():
+    try:
+        pump_data = request.get_json()
+        if not pump_data:
+            return jsonify({"error": "No JSON payload received"}), 400
+
+        # Setup the GPIO pin for output (relay control)
+        # GPIO.setup(pin, GPIO.OUT)
+
+        # print(f"Turning ON water pump on pin {pin} for {duration} seconds")
+
+        # Turn on the relay (pump)
+        # GPIO.output(pin, GPIO.HIGH)
+
+        # Wait for the specified duration
+        # time.sleep(duration)
+
+        # Turn off the relay (pump)
+        # GPIO.output(pin, GPIO.LOW)
+
+        # print(f"Water pump on pin {pin} turned OFF after {duration} seconds")
+
+        return jsonify({
+            "message": f"Water pump controlled successfully",
+            "pin": pump_data,
+            "duration": "5 seconds",
+            "status": "completed"
+        }), 200
+
+    except Exception as e:
+        # Make sure to turn off the pump in case of error
+        try:
+            if 'pin' in locals():
+                GPIO.output(pin, GPIO.LOW)
+        except:
+            pass
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

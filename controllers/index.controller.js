@@ -126,11 +126,16 @@ module.exports.pumpWater = async (req, res, next) => {
           `Tank ${tank._id} has more than one unpaid bills, we can't pump water for you now.`,
           tank.owner
         );
+      } else if (tank.isTankFull) {
+        await sendNotificationWithSocket(
+          `Tank ${tank._id} is full, we can't pump water for you now.`,
+          tank.owner
+        );
       }
     }
     const response = await axios.post(
-      "http://localhost:5000/pump_water",
-      tanks_to_pump
+      "http://localhost:5000/control_water_pump",
+      { tanks_to_pump, main_tank }
     );
     res.status(200).json(response);
   } catch (e) {
