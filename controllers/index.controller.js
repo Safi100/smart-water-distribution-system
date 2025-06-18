@@ -138,7 +138,7 @@ module.exports.pumpWater = async (req, res, next) => {
       "http://localhost:5000/control_water_pump",
       { tanks_to_pump, main_tank }
     );
-    res.status(200).json(response);
+    res.status(200).json(response.data);
   } catch (e) {
     next(e);
   }
