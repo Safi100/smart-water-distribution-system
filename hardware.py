@@ -86,26 +86,24 @@ def control_water_pump():
         if not pump_data:
             return jsonify({"error": "No JSON payload received"}), 400
 
+        pin = pump_data['main_tank']['hardware']['water_pump']
+        duration = pump_data['main_tank']['water_pump_duration']
+
         # Setup the GPIO pin for output (relay control)
-        # GPIO.setup(pin, GPIO.OUT)
-
-        # print(f"Turning ON water pump on pin {pin} for {duration} seconds")
-
+        GPIO.setup(pin, GPIO.OUT)
+        print(f"Turning ON water pump on pin {pin} for {duration} seconds")
         # Turn on the relay (pump)
-        # GPIO.output(pin, GPIO.HIGH)
-
+        GPIO.output(pin, GPIO.HIGH)
         # Wait for the specified duration
-        # time.sleep(duration)
-
+        time.sleep(duration)
         # Turn off the relay (pump)
-        # GPIO.output(pin, GPIO.LOW)
-
-        # print(f"Water pump on pin {pin} turned OFF after {duration} seconds")
+        GPIO.output(pin, GPIO.LOW)
+        print(f"Water pump on pin {pin} turned OFF after {duration} seconds")
 
         return jsonify({
             "message": f"Water pump controlled successfully",
-            "pin": pump_data,
-            "duration": "5 seconds",
+            "pin": pin,
+            "duration": duration,
             "status": "completed"
         }), 200
 
