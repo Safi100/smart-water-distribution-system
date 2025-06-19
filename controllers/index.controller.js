@@ -134,6 +134,8 @@ module.exports.pumpWater = async (req, res, next) => {
         );
       }
     }
+    if (tanks_to_pump.length === 0)
+      throw new HandleError("No tanks to pump", 404);
     const response = await axios.post(
       "http://localhost:5000/control_water_pump",
       { tanks_to_pump, main_tank }
