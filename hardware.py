@@ -7,46 +7,32 @@ app = Flask(__name__)
 GPIO.setmode(GPIO.BCM)
 
 FLOW_PULSE_PER_LITER = 450  # YF-S201
+pulse_count = 0  # متغير عام
 
-def setup_gpio_pins(pin_list):
-    GPIO.setmode(GPIO.BCM)
-    for pin in pin_list:
-        GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+def count_pulse(channel):
+    global pulse_count
+    pulse_count += 1
 
+def measure_water_flow_single(tank, duration):
+    global pulse_count
+    pulse_count = 0  # إعادة تعيين العداد في بداية القياس
 
-def measure_water_flow(tanks, duration):
-    results = []
+    flow_pin = tank["hardware"]["waterflow_sensor"]
+    GPIO.setup(flow_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)   
+    GPIO.add_event_detect(flow_pin, GPIO.FALLING, callback=count_pulse)
 
-    # تجهيز عداد لكل خزان
-    for tank in tanks:
-        tank["pulse_count"] = 0
-        tank["flow_pin"] = tank["hardware"]["waterflow_sensor"]
-
-    # دالة لكل حساس لتخزين النبضات
-    def make_callback(tank_index):
-        def callback(channel):
-            tanks[tank_index]["pulse_count"] += 1
-        return callback
-
-    # ربط الحساسات بالـ GPIO
-    setup_gpio_pins([tank["flow_pin"] for tank in tanks])
-    for index, tank in enumerate(tanks):
-        GPIO.add_event_detect(tank["flow_pin"], GPIO.FALLING, callback=make_callback(index))
-
-    # الانتظار أثناء التشغيل
     time.sleep(duration)
 
-    # إزالة الأحداث
-    for tank in tanks:
-        GPIO.remove_event_detect(tank["flow_pin"])
-        liters = tank["pulse_count"] / FLOW_PULSE_PER_LITER
-        results.append({
-            "tank_id": tank["id"],
-            "pulses": tank["pulse_count"],
-            "liters": round(liters, 2)
-        })
+    GPIO.remove_event_detect(flow_pin)
+    liters = pulse_count / FLOW_PULSE_PER_LITER
 
-    return results
+    result = {
+        "tank_id": tank["id"],
+        "pulses": pulse_count,  # استخدم العد الصحيح هنا
+        "liters": round(liters, 2)
+    }
+
+    return result
 
 
 @app.route('/control_water_pump', methods=['POST'])
