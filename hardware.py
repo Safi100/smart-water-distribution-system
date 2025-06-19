@@ -44,7 +44,7 @@ def control_water_pump():
 
         pin = pump_data['main_tank']['hardware']['water_pump']
         duration = pump_data['main_tank']['water_pump_duration']
-        tanks = pump_data.get('tanks', [])
+        tank = pump_data.get('tank', {})
 
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(pin, GPIO.OUT)
@@ -54,7 +54,7 @@ def control_water_pump():
         GPIO.output(pin, GPIO.HIGH)
 
         # قراءة التدفق
-        tank_results = measure_water_flow(tanks, duration)
+        tank_results = measure_water_flow_single(tank, duration)
 
         # إيقاف المضخة
         GPIO.output(pin, GPIO.LOW)
