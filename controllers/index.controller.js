@@ -104,7 +104,7 @@ module.exports.pumpWater = async (req, res, next) => {
     main_tank = {
       ...main_tank.toObject({ virtuals: true }),
       isTankEmpty:
-        Number(main_tank.current_level) / Number(main_tank.max_capacity) <= 0.5,
+        Number(main_tank.current_level) / Number(main_tank.max_capacity) <= 0.3,
     };
     if (main_tank.isTankEmpty) {
       throw new HandleError("Main tank is empty, can't pump water.", 400);
@@ -144,9 +144,10 @@ module.exports.pumpWater = async (req, res, next) => {
     }
     if (tanks_to_pump.length === 0)
       throw new HandleError("No tanks to pump", 404);
+    const tank = tanks_to_pump[0];
     const response = await axios.post(
       "http://localhost:5000/control_water_pump",
-      { tanks_to_pump, main_tank }
+      { tank, main_tank }
     );
     res.status(200).json(response.data);
   } catch (e) {
