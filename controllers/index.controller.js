@@ -94,13 +94,21 @@ const sendNotificationWithSocket = async (message, userId) => {
 module.exports.pumpWater = async (req, res, next) => {
   try {
     const tanks_to_pump = [];
-    const main_tank = await MainTank.findOne();
+    let main_tank = await MainTank.findOne();
     if (!main_tank) throw new HandleError("No main tank found", 404);
     let tanks = await Tank.find();
 
     if (!tanks || tanks.length === 0)
       throw new HandleError("No tanks found to pump", 404);
 
+    main_tank = {
+      ...main_tank.toObject({ virtuals: true }),
+      isTankEmpty:
+        Number(main_tank.current_level) / Number(main_tank.max_capacity) <= 0.5,
+    };
+    if (main_tank.isTankEmpty) {
+      throw new HandleError("Main tank is empty, can't pump water.", 400);
+    }
     tanks = await Promise.all(
       tanks.map(async (tank) => {
         const obj = tank.toObject({ virtuals: true });
