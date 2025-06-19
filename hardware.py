@@ -6,6 +6,93 @@ import math
 app = Flask(__name__)
 GPIO.setmode(GPIO.BCM)
 
+FLOW_PULSE_PER_LITER = 450  # YF-S201
+
+def setup_gpio_pins(pin_list):
+    GPIO.setmode(GPIO.BCM)
+    for pin in pin_list:
+        GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+
+
+def measure_water_flow(tanks, duration):
+    results = []
+
+    # تجهيز عداد لكل خزان
+    for tank in tanks:
+        tank["pulse_count"] = 0
+        tank["flow_pin"] = tank["hardware"]["waterflow_sensor"]
+
+    # دالة لكل حساس لتخزين النبضات
+    def make_callback(tank_index):
+        def callback(channel):
+            tanks[tank_index]["pulse_count"] += 1
+        return callback
+
+    # ربط الحساسات بالـ GPIO
+    setup_gpio_pins([tank["flow_pin"] for tank in tanks])
+    for index, tank in enumerate(tanks):
+        GPIO.add_event_detect(tank["flow_pin"], GPIO.FALLING, callback=make_callback(index))
+
+    # الانتظار أثناء التشغيل
+    time.sleep(duration)
+
+    # إزالة الأحداث
+    for tank in tanks:
+        GPIO.remove_event_detect(tank["flow_pin"])
+        liters = tank["pulse_count"] / FLOW_PULSE_PER_LITER
+        results.append({
+            "tank_id": tank["id"],
+            "pulses": tank["pulse_count"],
+            "liters": round(liters, 2)
+        })
+
+    return results
+
+
+@app.route('/control_water_pump', methods=['POST'])
+def control_water_pump():
+    try:
+        pump_data = request.get_json()
+        if not pump_data:
+            return jsonify({"error": "No JSON payload received"}), 400
+
+        pin = pump_data['main_tank']['hardware']['water_pump']
+        duration = pump_data['main_tank']['water_pump_duration']
+        tanks = pump_data.get('tanks', [])
+
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setup(pin, GPIO.OUT)
+
+        # تشغيل المضخة
+        print(f"Turning ON water pump on pin {pin} for {duration} seconds")
+        GPIO.output(pin, GPIO.HIGH)
+
+        # قراءة التدفق
+        tank_results = measure_water_flow(tanks, duration)
+
+        # إيقاف المضخة
+        GPIO.output(pin, GPIO.LOW)
+        print(f"Water pump on pin {pin} turned OFF")
+
+        GPIO.cleanup()
+
+        return jsonify({
+            "message": "Water pump controlled successfully",
+            "pin": pin,
+            "duration": duration,
+            "status": "completed",
+            "tanks": tank_results
+        }), 200
+
+    except Exception as e:
+        try:
+            if 'pin' in locals():
+                GPIO.output(pin, GPIO.LOW)
+        except:
+            pass
+        GPIO.cleanup()
+        return jsonify({"error": str(e)}), 500
+
 def measure_once(TRIG_PIN, ECHO_PIN):
     GPIO.output(TRIG_PIN, False)
     time.sleep(0.05)
@@ -77,43 +164,6 @@ def calculate_tank_capacity():
 
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/control_water_pump', methods=['POST'])
-def control_water_pump():
-    try:
-        pump_data = request.get_json()
-        if not pump_data:
-            return jsonify({"error": "No JSON payload received"}), 400
-
-        pin = pump_data['main_tank']['hardware']['water_pump']
-        duration = pump_data['main_tank']['water_pump_duration']
-
-        # Setup the GPIO pin for output (relay control)
-        GPIO.setup(pin, GPIO.OUT)
-        print(f"Turning ON water pump on pin {pin} for {duration} seconds")
-        # Turn on the relay (pump)
-        GPIO.output(pin, GPIO.HIGH)
-        # Wait for the specified duration
-        time.sleep(duration)
-        # Turn off the relay (pump)
-        GPIO.output(pin, GPIO.LOW)
-        print(f"Water pump on pin {pin} turned OFF after {duration} seconds")
-
-        return jsonify({
-            "message": f"Water pump controlled successfully",
-            "pin": pin,
-            "duration": duration,
-            "status": "completed"
-        }), 200
-
-    except Exception as e:
-        # Make sure to turn off the pump in case of error
-        try:
-            if 'pin' in locals():
-                GPIO.output(pin, GPIO.LOW)
-        except:
-            pass
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
