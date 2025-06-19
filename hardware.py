@@ -15,26 +15,26 @@ def count_pulse(channel):
 
 def measure_water_flow_single(tank, duration):
     global pulse_count
-    pulse_count = 0  # إعادة تعيين العداد في بداية القياس
+    pulse_count = 0
 
     flow_pin = tank["hardware"]["waterflow_sensor"]
-    GPIO.setup(flow_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)   
+    GPIO.setup(flow_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
     GPIO.add_event_detect(flow_pin, GPIO.FALLING, callback=count_pulse)
 
-    time.sleep(duration)
+    start_time = time.time()
+    while time.time() - start_time < duration:
+        time.sleep(0.01)  # انتظر شوي مع إعطاء وقت للـ callback يشتغل
 
     GPIO.remove_event_detect(flow_pin)
     liters = pulse_count / FLOW_PULSE_PER_LITER
 
     result = {
         "tank_id": tank["id"],
-        "pulses": pulse_count,  # استخدم العد الصحيح هنا
+        "pulses": pulse_count,
         "liters": round(liters, 2)
     }
 
     return result
-
-
 @app.route('/control_water_pump', methods=['POST'])
 def control_water_pump():
     try:
