@@ -14,12 +14,11 @@ def test_dual_relay():
 
     print("تشغيل الريلي الأول لمدة 3 ثواني")
     GPIO.output(RELAY1, GPIO.LOW)  # في بعض الريليات LOW تعني تشغيل
-    time.sleep(3)
-    GPIO.output(RELAY1, GPIO.HIGH)
-
-    print("تشغيل الريلي الثاني لمدة 3 ثواني")
     GPIO.output(RELAY2, GPIO.LOW)
+    
     time.sleep(3)
+
+    GPIO.output(RELAY1, GPIO.HIGH)
     GPIO.output(RELAY2, GPIO.HIGH)
 
     # تنظيف الـ GPIO
