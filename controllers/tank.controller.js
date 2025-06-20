@@ -70,8 +70,6 @@ module.exports.addTank = async (req, res, next) => {
         ultrasonic_sensor_echo: hardware.ultrasonic_sensor_echo,
         waterflow_sensor: hardware.waterflow_sensor,
         solenoid_valve: hardware.solenoid_valve,
-        lcd_scl: hardware.lcd_scl,
-        lcd_sda: hardware.lcd_sda,
       },
     });
     await tank.save();
@@ -222,8 +220,6 @@ module.exports.updateTank = async (req, res, next) => {
         "ultrasonic_sensor_echo",
         "waterflow_sensor",
         "solenoid_valve",
-        "lcd_scl",
-        "lcd_sda",
       ];
 
       const updatedHardware = {};
