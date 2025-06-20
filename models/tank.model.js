@@ -34,14 +34,6 @@ const tankSchema = new mongoose.Schema(
         type: Number,
         required: true,
       },
-      lcd_scl: {
-        type: Number,
-        required: true,
-      },
-      lcd_sda: {
-        type: Number,
-        required: true,
-      },
     },
     city: { type: mongoose.Schema.Types.ObjectId, ref: "City", required: true },
     family_members: [
