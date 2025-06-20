@@ -25,11 +25,6 @@ def measure_water_flow_single(tank, duration):
     
     # إعداد البنات
     GPIO.setup(flow_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-    GPIO.setup(valve_pin, GPIO.OUT)
-
-    # فتح البوابة (تشغيل الريلاي بـ LOW)
-    GPIO.output(valve_pin, GPIO.LOW)
-    print(f"Solenoid valve on pin {valve_pin} opened (LOW)")
 
     GPIO.add_event_detect(flow_pin, GPIO.FALLING, callback=count_pulse)
 
@@ -37,10 +32,6 @@ def measure_water_flow_single(tank, duration):
     while time.time() - start_time < duration:
         time.sleep(0.05)
         print("Pulse count so far:", pulse_count)
-
-    # إغلاق البوابة (HIGH لإطفاء الريلاي)
-    GPIO.output(valve_pin, GPIO.HIGH)
-    print(f"Solenoid valve on pin {valve_pin} closed (HIGH)")
 
     GPIO.remove_event_detect(flow_pin)
 
@@ -61,29 +52,42 @@ def control_water_pump():
         if not pump_data:
             return jsonify({"error": "No JSON payload received"}), 400
 
-        pin = pump_data['main_tank']['hardware']['water_pump']
+        water_pump_pin = pump_data['main_tank']['hardware']['water_pump']
         duration = pump_data['main_tank']['water_pump_duration']
         tank = pump_data.get('tank', {})
+        valve_pin = tank["hardware"]["solenoid_valve"]
+
 
         GPIO.setmode(GPIO.BCM)
-        GPIO.setup(pin, GPIO.OUT)
+        GPIO.setup(water_pump_pin, GPIO.OUT)
+        GPIO.setup(valve_pin, GPIO.OUT)
+
 
         # تشغيل المضخة
-        print(f"Turning ON water pump on pin {pin} for {duration} seconds")
-        GPIO.output(pin, GPIO.HIGH)
+        print(f"Turning ON water pump on pin {water_pump_pin} for {duration} seconds")
+        GPIO.output(water_pump_pin, GPIO.HIGH)
         time.sleep(1)
+
+        # فتح البوابة (تشغيل الريلاي بـ LOW)
+        GPIO.output(valve_pin, GPIO.LOW)
+        print(f"Solenoid valve on pin {valve_pin} opened (LOW)")
+
         # قراءة التدفق
         tank_results = measure_water_flow_single(tank, duration)
 
         # إيقاف المضخة
-        GPIO.output(pin, GPIO.LOW)
-        print(f"Water pump on pin {pin} turned OFF")
+        GPIO.output(water_pump_pin, GPIO.LOW)
+        print(f"Water pump on pin {water_pump_pin} turned OFF")
+        # إغلاق البوابة (HIGH لإطفاء الريلاي)
+        time.sleep(2)
+        GPIO.output(valve_pin, GPIO.HIGH)
+        print(f"Solenoid valve on pin {valve_pin} closed (HIGH)")
 
         GPIO.cleanup()
 
         return jsonify({
             "message": "Water pump controlled successfully",
-            "pin": pin,
+            "pin": water_pump_pin,
             "duration": duration,
             "status": "completed",
             "tanks": tank_results
@@ -91,8 +95,8 @@ def control_water_pump():
 
     except Exception as e:
         try:
-            if 'pin' in locals():
-                GPIO.output(pin, GPIO.LOW)
+            if 'water_pump_pin' in locals():
+                GPIO.output(water_pump_pin, GPIO.LOW)
         except:
             pass
         GPIO.cleanup()
