@@ -209,7 +209,7 @@ module.exports.pumpWater = async (req, res, next) => {
     //   main_tank_level: updated_main_tank_response.data,
     //   updated_tanks: updatedTanks,
     // });
-    res.status(200).json({ tanks: response.data, main_tank: main_tank });
+    res.status(200).json({ tanks: response.data, main_tank: originalMainTank });
   } catch (e) {
     next(e);
   }
