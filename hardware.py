@@ -15,17 +15,35 @@ def count_pulse(channel):
     pulse_count += 1
 
 def measure_water_flow_single(tank, duration):
+    global pulse_count
+    pulse_count = 0
 
     flow_pin = tank["hardware"]["waterflow_sensor"]
+    valve_pin = tank["hardware"]["solenoid_valve"]
+
     print(f"Starting water flow measurement on pin {flow_pin}")
+    
+    # إعداد البنات
     GPIO.setup(flow_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+    GPIO.setup(valve_pin, GPIO.OUT)
+
+    # فتح البوابة (تشغيل الريلاي بـ LOW)
+    GPIO.output(valve_pin, GPIO.LOW)
+    print(f"Solenoid valve on pin {valve_pin} opened (LOW)")
+
     GPIO.add_event_detect(flow_pin, GPIO.FALLING, callback=count_pulse)
 
     start_time = time.time()
     while time.time() - start_time < duration:
-        time.sleep(0.05)  # انتظر شوي مع إعطاء وقت للـ callback يشتغل
+        time.sleep(0.05)
         print("Pulse count so far:", pulse_count)
+
+    # إغلاق البوابة (HIGH لإطفاء الريلاي)
+    GPIO.output(valve_pin, GPIO.HIGH)
+    print(f"Solenoid valve on pin {valve_pin} closed (HIGH)")
+
     GPIO.remove_event_detect(flow_pin)
+
     liters = pulse_count / FLOW_PULSE_PER_LITER
 
     result = {
@@ -35,6 +53,7 @@ def measure_water_flow_single(tank, duration):
     }
 
     return result
+
 @app.route('/control_water_pump', methods=['POST'])
 def control_water_pump():
     try:
