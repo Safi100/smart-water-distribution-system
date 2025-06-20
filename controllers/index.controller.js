@@ -106,22 +106,24 @@ module.exports.pumpWater = async (req, res, next) => {
       isTankEmpty:
         Number(main_tank.current_level) / Number(main_tank.max_capacity) <= 0.3,
     };
+
     if (main_tank.isTankEmpty) {
       throw new HandleError("Main tank is empty, can't pump water.", 400);
     }
     tanks = await Promise.all(
       tanks.map(async (tank) => {
-        const obj = tank.toObject({ virtuals: true });
-        const billsCount = await CountOfBillsNotPaid(obj._id);
+        const tankObj = tank.toObject({ virtuals: true });
+        const billsCount = await CountOfBillsNotPaid(tank._id);
+        const usage = calculateWaterUsage(tankObj);
+
         return {
-          ...obj,
-          usage: calculateWaterUsage(obj),
-          remainCapacity:
-            obj.monthly_capacity - Number(calculateWaterUsage(obj)),
+          ...tankObj,
+          usage,
+          remainCapacity: tankObj.monthly_capacity - Number(usage),
           billsCountNotPaid: billsCount,
           isTankFull:
-            Number(obj.max_capacity) > 0 &&
-            Number(obj.current_level) / Number(obj.max_capacity) >= 0.8,
+            Number(tankObj.max_capacity) > 0 &&
+            Number(tankObj.current_level) / Number(tankObj.max_capacity) >= 0.8,
         };
       })
     );
@@ -144,12 +146,44 @@ module.exports.pumpWater = async (req, res, next) => {
     }
     if (tanks_to_pump.length === 0)
       throw new HandleError("No tanks to pump", 404);
-    const tank = tanks_to_pump[0];
-    const response = await axios.post(
-      "http://localhost:5000/control_water_pump",
-      { tank, main_tank }
-    );
-    res.status(200).json(response.data);
+    let tank = tanks_to_pump[0];
+    // const response = await axios.post(
+    //   "http://localhost:5000/control_water_pump",
+    //   { tank, main_tank }
+    // );
+
+    // // read main tank capacity after pumping water
+    // const updated_main_tank_response = await axios.post(
+    //   `http://localhost:5000/calculate_tank_capacity`,
+    //   main_tank
+    // );
+    // main_tank.current_level =
+    //   updated_main_tank_response.data.estimated_volume_liters;
+    // await main_tank.save();
+
+    const today = new Date().getDate().toString(); // بيطلع رقم اليوم كنص
+    console.log(tank.days);
+
+    // Find the original tank document to update it
+    const originalTank = await Tank.findById(tank._id);
+    if (!originalTank) {
+      throw new HandleError("Tank not found for update", 404);
+    }
+
+    // تأكد أن اليوم ضمن 1 إلى 30 فقط
+    if (parseInt(today) <= 30) {
+      if (originalTank.amount_per_month.days[today] !== undefined) {
+        originalTank.amount_per_month.days[today] += 5;
+      } else {
+        originalTank.amount_per_month.days[today] = 22;
+      }
+      // Mark the nested path as modified so Mongoose knows to save it
+      originalTank.markModified("amount_per_month.days");
+    }
+    await originalTank.save();
+
+    res.status(200).json(originalTank.amount_per_month.days);
+    // res.status(200).json(today);
   } catch (e) {
     next(e);
   }
