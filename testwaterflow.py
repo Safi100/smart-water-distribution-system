@@ -1,45 +1,49 @@
 import RPi.GPIO as GPIO
 import time
+import os
 
-FLOW_PIN = 26  # غيّر حسب توصيلك
+FLOW_PIN = 25  # GPIO pin
+PULSES_PER_LITER = 450
+COUNTER_FILE = "water_volume.txt"
 
 pulse_count = 0
-flow_rate = 0
-liters = 0
-start_time = time.time()
+total_liters = 0.0
 
-# كل نبضة = كمية ماء صغيرة (حسب نوع الحساس)
-# YF-S201: ~ 450 نبضة = 1 لتر
-PULSES_PER_LITER = 450
+# ⬅️ تحميل القيمة من الملف إن وجدت
+if os.path.exists(COUNTER_FILE):
+    with open(COUNTER_FILE, "r") as f:
+        try:
+            total_liters = float(f.read().strip())
+        except:
+            total_liters = 0.0
 
-def count_pulse(channel):
+# ⬅️ تعريف الكولباك عند وجود نبضة
+def callback(channel):
     global pulse_count
     pulse_count += 1
 
-# إعداد GPIO
+# ⬅️ إعدادات GPIO
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(FLOW_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-GPIO.add_event_detect(FLOW_PIN, GPIO.FALLING, callback=count_pulse)
+GPIO.add_event_detect(FLOW_PIN, GPIO.RISING, callback=callback)
 
-print("بدء قراءة تدفق الماء...")
+print("Started water monitoring. Press Ctrl+C to exit.")
 
 try:
     while True:
-        time.sleep(1)  # حساب كل ثانية
-        elapsed = time.time() - start_time
-
-        # حساب عدد الليترات المقاسة
+        time.sleep(1)
         liters = pulse_count / PULSES_PER_LITER
-        flow_rate = (pulse_count / elapsed) / PULSES_PER_LITER  # لتر/ثانية
-
-        print(f"النبضات: {pulse_count} | التدفق: {flow_rate:.3f} لتر/ثانية | الحجم: {liters:.3f} لتر")
-
-        # إعادة التوقيت والعداد إذا بدك كل ثانية:
         pulse_count = 0
-        start_time = time.time()
+        total_liters += liters
+
+        print(f"Water passed this second: {liters:.3f} L | Total: {total_liters:.3f} L")
+
+        # ⬅️ حفظ القيمة إلى ملف
+        with open(COUNTER_FILE, "w") as f:
+            f.write(f"{total_liters:.5f}")
 
 except KeyboardInterrupt:
-    print("\nتم الإيقاف من المستخدم.")
+    print("\nStopped by user.")
 
 finally:
     GPIO.cleanup()
