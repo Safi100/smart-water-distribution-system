@@ -11,20 +11,20 @@ pulse_count = 0  # متغير عام
 
 def count_pulse(channel):
     global pulse_count
+    print("Pulse detected!")
     pulse_count += 1
 
 def measure_water_flow_single(tank, duration):
-    global pulse_count
-    pulse_count = 0
 
     flow_pin = tank["hardware"]["waterflow_sensor"]
+    print(f"Starting water flow measurement on pin {flow_pin}")
     GPIO.setup(flow_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
     GPIO.add_event_detect(flow_pin, GPIO.FALLING, callback=count_pulse)
 
     start_time = time.time()
     while time.time() - start_time < duration:
-        time.sleep(0.01)  # انتظر شوي مع إعطاء وقت للـ callback يشتغل
-
+        time.sleep(0.05)  # انتظر شوي مع إعطاء وقت للـ callback يشتغل
+        print("Pulse count so far:", pulse_count)
     GPIO.remove_event_detect(flow_pin)
     liters = pulse_count / FLOW_PULSE_PER_LITER
 
@@ -52,7 +52,7 @@ def control_water_pump():
         # تشغيل المضخة
         print(f"Turning ON water pump on pin {pin} for {duration} seconds")
         GPIO.output(pin, GPIO.HIGH)
-
+        time.sleep(1)
         # قراءة التدفق
         tank_results = measure_water_flow_single(tank, duration)
 
