@@ -146,44 +146,70 @@ module.exports.pumpWater = async (req, res, next) => {
     }
     if (tanks_to_pump.length === 0)
       throw new HandleError("No tanks to pump", 404);
-    let tank = tanks_to_pump[0];
-    // const response = await axios.post(
-    //   "http://localhost:5000/control_water_pump",
-    //   { tank, main_tank }
-    // );
 
-    // // read main tank capacity after pumping water
-    // const updated_main_tank_response = await axios.post(
-    //   `http://localhost:5000/calculate_tank_capacity`,
-    //   main_tank
-    // );
-    // main_tank.current_level =
-    //   updated_main_tank_response.data.estimated_volume_liters;
-    // await main_tank.save();
+    const tank = tanks_to_pump[0];
+    console.log(`🚰 Found ${tanks_to_pump.length} tanks ready for pumping`);
 
-    const today = new Date().getDate().toString(); // بيطلع رقم اليوم كنص
-    console.log(tank.days);
+    // Send pump request for all tanks to hardware.py
+    const response = await axios.post(
+      "http://localhost:5000/control_water_pump",
+      { tank: tank, main_tank }
+    );
 
-    // Find the original tank document to update it
-    const originalTank = await Tank.findById(tank._id);
-    if (!originalTank) {
-      throw new HandleError("Tank not found for update", 404);
+    // Read main tank capacity after pumping water
+    const updated_main_tank_response = await axios.post(
+      `http://localhost:5000/calculate_tank_capacity`,
+      main_tank
+    );
+
+    // Update main tank level
+    const originalMainTank = await MainTank.findOne();
+    if (originalMainTank) {
+      originalMainTank.current_level =
+        updated_main_tank_response.data.estimated_volume_liters;
+      await originalMainTank.save();
     }
 
-    // تأكد أن اليوم ضمن 1 إلى 30 فقط
-    if (parseInt(today) <= 30) {
-      if (originalTank.amount_per_month.days[today] !== undefined) {
-        originalTank.amount_per_month.days[today] += 5;
-      } else {
-        originalTank.amount_per_month.days[today] = 22;
-      }
-      // Mark the nested path as modified so Mongoose knows to save it
-      originalTank.markModified("amount_per_month.days");
-    }
-    await originalTank.save();
+    const today = new Date().getDate().toString();
+    const updatedTanks = [];
 
-    res.status(200).json(originalTank.amount_per_month.days);
-    // res.status(200).json(today);
+    // Update water usage for all pumped tanks
+    // for (const tank of tanks_to_pump) {
+    //   console.log(`💧 Updating usage for tank ${tank._id}`);
+
+    //   // Find the original tank document to update it
+    //   const originalTank = await Tank.findById(tank._id);
+    //   if (!originalTank) {
+    //     console.log(`⚠️ Tank ${tank._id} not found for update`);
+    //     continue;
+    //   }
+
+    //   // تأكد أن اليوم ضمن 1 إلى 30 فقط
+    //   if (parseInt(today) <= 30) {
+    //     if (originalTank.amount_per_month.days[today] !== undefined) {
+    //       originalTank.amount_per_month.days[today] += 5;
+    //     } else {
+    //       originalTank.amount_per_month.days[today] = 5; // Start with 5 liters instead of 22
+    //     }
+    //     // Mark the nested path as modified so Mongoose knows to save it
+    //     originalTank.markModified("amount_per_month.days");
+    //   }
+
+    //   await originalTank.save();
+    //   updatedTanks.push({
+    //     tank_id: tank._id,
+    //     daily_usage: originalTank.amount_per_month.days,
+    //   });
+    // }
+
+    // res.status(200).json({
+    //   message: `Successfully pumped water to ${tanks_to_pump.length} tanks`,
+    //   pumped_tanks_count: tanks_to_pump.length,
+    //   hardware_response: response.data,
+    //   main_tank_level: updated_main_tank_response.data,
+    //   updated_tanks: updatedTanks,
+    // });
+    res.status(200).json({ tanks: response.data, main_tank: main_tank });
   } catch (e) {
     next(e);
   }
