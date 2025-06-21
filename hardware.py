@@ -57,11 +57,8 @@ def control_water_pump():
         tank = pump_data.get('tank', {})
         valve_pin = tank["hardware"]["solenoid_valve"]
 
-
-        GPIO.setmode(GPIO.BCM)
         GPIO.setup(water_pump_pin, GPIO.OUT)
         GPIO.setup(valve_pin, GPIO.OUT)
-
 
         # تشغيل المضخة
         print(f"Turning ON water pump on pin {water_pump_pin} for {duration} seconds")
@@ -138,6 +135,7 @@ def calculate_tank_capacity():
         ECHO_PIN = tank_data['hardware']['ultrasonic_sensor_echo']
         TRIG_PIN = tank_data['hardware']['ultrasonic_sensor_trig']
 
+        GPIO.setmode(GPIO.BCM)
         GPIO.setup(TRIG_PIN, GPIO.OUT)
         GPIO.setup(ECHO_PIN, GPIO.IN)
 

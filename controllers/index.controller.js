@@ -211,6 +211,8 @@ module.exports.pumpWater = async (req, res, next) => {
     // });
     res.status(200).json({ tanks: response.data, main_tank: originalMainTank });
   } catch (e) {
+    console.log(e);
+
     next(e);
   }
 };
