@@ -89,11 +89,12 @@ module.exports.loginAdmin = async (req, res, next) => {
       process.env.JWT_SECRET,
       { expiresIn: "30d" }
     );
+    const admin_id = admin._id.toString();
     res.cookie("c_user", admin._id.toString());
     res
       .cookie("access_token", token, { httpOnly: true })
       .status(200)
-      .json({ message: "Login successful", token });
+      .json({ message: "Login successful", token, admin_id });
   } catch (e) {
     next(e);
   }
