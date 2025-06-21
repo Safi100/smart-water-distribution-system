@@ -17,9 +17,13 @@ pulse_locks = {}
 def count_pulse_for_tank(tank_id):
     """إنشاء دالة callback مخصصة لكل خزان"""
     def callback(channel):
-        with pulse_locks[tank_id]:
-            tank_pulse_counts[tank_id] += 1
-            print(f"Pulse detected for tank {tank_id}! Count: {tank_pulse_counts[tank_id]}")
+        try:
+            with pulse_locks[tank_id]:
+                tank_pulse_counts[tank_id] += 1
+                count = tank_pulse_counts[tank_id]
+            print(f"🔥 PULSE DETECTED! Tank {tank_id}, Pin {channel}, Count: {count}")
+        except Exception as e:
+            print(f"❌ ERROR in pulse callback for tank {tank_id}: {e}")
     return callback
 
 def measure_water_flow_for_tank(tank, duration):
@@ -28,38 +32,62 @@ def measure_water_flow_for_tank(tank, duration):
     flow_pin = tank["hardware"]["waterflow_sensor"]
     valve_pin = tank["hardware"]["solenoid_valve"]
 
+    print(f"🔧 TANK {tank_id} - Starting setup:")
+    print(f"   - Flow sensor pin: {flow_pin}")
+    print(f"   - Valve pin: {valve_pin}")
+    print(f"   - Duration: {duration} seconds")
+
     # إعداد العدادات والأقفال لهذا الخزان
     tank_pulse_counts[tank_id] = 0
     pulse_locks[tank_id] = threading.Lock()
 
-    print(f"Starting water flow measurement for tank {tank_id} on pin {flow_pin}")
-
     try:
         # إعداد البنات
+        print(f"🔧 TANK {tank_id} - Setting up GPIO pins...")
         GPIO.setup(flow_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         GPIO.setup(valve_pin, GPIO.OUT)
+        print(f"✅ TANK {tank_id} - GPIO setup completed")
 
         # فتح البوابة (تشغيل الريلاي بـ LOW)
         GPIO.output(valve_pin, GPIO.LOW)
-        print(f"Solenoid valve on pin {valve_pin} opened (LOW) for tank {tank_id}")
+        print(f"🚰 TANK {tank_id} - Solenoid valve OPENED (pin {valve_pin} = LOW)")
 
         # إعداد callback للنبضات
         callback = count_pulse_for_tank(tank_id)
+        print(f"🔧 TANK {tank_id} - Registering pulse callback...")
         GPIO.add_event_detect(flow_pin, GPIO.FALLING, callback=callback)
+        print(f"✅ TANK {tank_id} - Pulse detection registered on pin {flow_pin}")
+
+        # اختبار حالة الـ pin قبل البدء
+        initial_pin_state = GPIO.input(flow_pin)
+        print(f"📊 TANK {tank_id} - Initial flow pin state: {initial_pin_state}")
 
         start_time = time.time()
+        last_count = 0
+
         while time.time() - start_time < duration:
-            time.sleep(0.1)
+            time.sleep(0.5)  # تقليل التكرار لتقليل الضوضاء
             with pulse_locks[tank_id]:
                 current_count = tank_pulse_counts[tank_id]
-            print(f"Tank {tank_id} pulse count so far: {current_count}")
 
+            # طباعة فقط عند تغيير العدد
+            if current_count != last_count:
+                print(f"💧 TANK {tank_id} - NEW PULSE! Count: {current_count}")
+                last_count = current_count
+
+            # اختبار حالة الـ pin
+            pin_state = GPIO.input(flow_pin)
+            if time.time() - start_time < 2:  # طباعة حالة الـ pin في أول ثانيتين فقط
+                print(f"📊 TANK {tank_id} - Pin {flow_pin} state: {pin_state}")
+
+        print(f"⏰ TANK {tank_id} - Measurement period ended")
         GPIO.remove_event_detect(flow_pin)
+        print(f"🔧 TANK {tank_id} - Event detection removed")
 
         # إغلاق البوابة (HIGH لإطفاء الريلاي)
         time.sleep(1)
         GPIO.output(valve_pin, GPIO.HIGH)
-        print(f"Solenoid valve on pin {valve_pin} closed (HIGH) for tank {tank_id}")
+        print(f"🚰 TANK {tank_id} - Solenoid valve CLOSED (pin {valve_pin} = HIGH)")
 
         # حساب اللترات
         with pulse_locks[tank_id]:
@@ -73,15 +101,18 @@ def measure_water_flow_for_tank(tank, duration):
             "liters": round(liters, 2)
         }
 
-        print(f"Tank {tank_id} measurement completed: {result}")
+        print(f"✅ TANK {tank_id} - FINAL RESULT: {result}")
         return result
 
     except Exception as e:
-        print(f"Error measuring tank {tank_id}: {str(e)}")
+        print(f"❌ ERROR in tank {tank_id}: {str(e)}")
+        import traceback
+        print(f"❌ TRACEBACK: {traceback.format_exc()}")
         try:
             GPIO.output(valve_pin, GPIO.HIGH)  # إغلاق البوابة في حالة الخطأ
-        except:
-            pass
+            print(f"🚰 TANK {tank_id} - Emergency valve close")
+        except Exception as cleanup_error:
+            print(f"❌ TANK {tank_id} - Cleanup error: {cleanup_error}")
         return {
             "tank_id": tank_id,
             "pulses": 0,
@@ -94,6 +125,7 @@ def measure_water_flow_for_tank(tank, duration):
             del tank_pulse_counts[tank_id]
         if tank_id in pulse_locks:
             del pulse_locks[tank_id]
+        print(f"🧹 TANK {tank_id} - Cleanup completed")
 
 @app.route('/control_water_pump', methods=['POST'])
 def control_water_pump():
@@ -120,7 +152,14 @@ def control_water_pump():
         time.sleep(1)
 
         # تشغيل قياس التدفق لكل الخزانات بالتوازي
-        print(f"Starting parallel water flow measurement for {len(tanks)} tanks")
+        print(f"🚀 Starting parallel water flow measurement for {len(tanks)} tanks")
+
+        # طباعة تفاصيل كل خزان قبل البدء
+        for i, tank in enumerate(tanks):
+            tank_id = tank.get("_id", tank.get("id", f"tank_{i}"))
+            flow_pin = tank["hardware"]["waterflow_sensor"]
+            valve_pin = tank["hardware"]["solenoid_valve"]
+            print(f"📋 Tank {i+1}: ID={tank_id}, Flow={flow_pin}, Valve={valve_pin}")
 
         with ThreadPoolExecutor(max_workers=len(tanks)) as executor:
             # إرسال كل خزان لـ thread منفصل
@@ -129,11 +168,17 @@ def control_water_pump():
                 for tank in tanks
             ]
 
+            print(f"⚡ {len(futures)} threads started, waiting for completion...")
+
             # انتظار انتهاء كل الـ threads وجمع النتائج
             tank_results = []
-            for future in futures:
+            for i, future in enumerate(futures):
+                print(f"⏳ Waiting for thread {i+1}...")
                 result = future.result()
                 tank_results.append(result)
+                print(f"✅ Thread {i+1} completed: {result}")
+
+        print(f"🏁 All threads completed. Results: {tank_results}")
 
         # إيقاف المضخة
         GPIO.output(water_pump_pin, GPIO.LOW)
