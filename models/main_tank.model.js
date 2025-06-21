@@ -27,6 +27,10 @@ const tankSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    water_pump_duration: {
+      type: Number,
+      required: true,
+    },
   },
   { timestamps: true }
 );
