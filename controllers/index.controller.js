@@ -177,6 +177,62 @@ module.exports.pumpWater = async (req, res, next) => {
       }
     );
 
+    // Update each tank's current_level and daily usage
+    const currentDay = new Date().getDate();
+    const currentMonth = new Date().getMonth() + 1; // JavaScript months are 0-based
+
+    for (const tankResult of response.data.tanks) {
+      if (
+        tankResult.tank_id &&
+        tankResult.final_liters !== undefined &&
+        tankResult.liters !== undefined
+      ) {
+        try {
+          // Find the tank
+          const tank = await Tank.findById(tankResult.tank_id);
+          if (!tank) {
+            console.warn(`Tank ${tankResult.tank_id} not found for update`);
+            continue;
+          }
+
+          // Update current_level with final_liters
+          tank.current_level = tankResult.final_liters;
+
+          // Update daily usage - add liters to current day
+          if (!tank.amount_per_month) {
+            tank.amount_per_month = { month: currentMonth, days: {} };
+          }
+
+          if (!tank.amount_per_month.days) {
+            tank.amount_per_month.days = {};
+          }
+
+          // Add liters to current day (convert to number and add)
+          const currentDayUsage =
+            Number(tank.amount_per_month.days[currentDay]) || 0;
+          tank.amount_per_month.days[currentDay] =
+            currentDayUsage + Number(tankResult.liters);
+
+          // Update month if needed
+          tank.amount_per_month.month = currentMonth;
+
+          await tank.save();
+
+          console.log(`✅ Updated tank ${tankResult.tank_id}:`, {
+            current_level: tankResult.final_liters,
+            daily_usage_added: tankResult.liters,
+            day: currentDay,
+            total_day_usage: tank.amount_per_month.days[currentDay],
+          });
+        } catch (updateError) {
+          console.error(
+            `❌ Error updating tank ${tankResult.tank_id}:`,
+            updateError
+          );
+        }
+      }
+    }
+
     // Respond with updated data
     res.status(200).json({
       message: `Successfully pumped water to ${tanks_to_pump.length} tank(s)`,
