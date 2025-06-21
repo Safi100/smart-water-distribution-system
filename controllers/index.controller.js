@@ -94,22 +94,20 @@ const sendNotificationWithSocket = async (message, userId) => {
 module.exports.pumpWater = async (req, res, next) => {
   try {
     const tanks_to_pump = [];
-    let main_tank = await MainTank.findOne();
+    const main_tank = await MainTank.findOne();
     if (!main_tank) throw new HandleError("No main tank found", 404);
-    let tanks = await Tank.find();
 
+    let tanks = await Tank.find();
     if (!tanks || tanks.length === 0)
       throw new HandleError("No tanks found to pump", 404);
 
-    main_tank = {
-      ...main_tank.toObject({ virtuals: true }),
-      isTankEmpty:
-        Number(main_tank.current_level) / Number(main_tank.max_capacity) <= 0.3,
-    };
+    const isTankEmpty =
+      Number(main_tank.current_level) / Number(main_tank.max_capacity) <= 0.3;
 
-    if (main_tank.isTankEmpty) {
+    if (isTankEmpty) {
       throw new HandleError("Main tank is empty, can't pump water.", 400);
     }
+
     tanks = await Promise.all(
       tanks.map(async (tank) => {
         const tankObj = tank.toObject({ virtuals: true });
@@ -127,12 +125,11 @@ module.exports.pumpWater = async (req, res, next) => {
         };
       })
     );
+
     for (let tank of tanks) {
-      if (tank.billsCountNotPaid < 2 && tank.isTankFull === false) {
+      if (tank.billsCountNotPaid < 2 && !tank.isTankFull) {
         tanks_to_pump.push(tank);
       } else if (tank.billsCountNotPaid >= 2) {
-        console.log(tank.owner);
-
         await sendNotificationWithSocket(
           `Tank ${tank._id} has more than one unpaid bills, we can't pump water for you now.`,
           tank.owner
@@ -144,75 +141,51 @@ module.exports.pumpWater = async (req, res, next) => {
         );
       }
     }
+
     if (tanks_to_pump.length === 0)
       throw new HandleError("No tanks to pump", 404);
 
     const tank = tanks_to_pump[0];
     console.log(`🚰 Found ${tanks_to_pump.length} tanks ready for pumping`);
 
-    // Send pump request for all tanks to hardware.py
+    // Send pump request to hardware (with only needed data)
     const response = await axios.post(
       "http://localhost:5000/control_water_pump",
-      { tank: tank, main_tank }
+      {
+        tank: tank,
+        main_tank: {
+          hardware: main_tank.hardware,
+          water_pump_duration: main_tank.water_pump_duration,
+        },
+      }
     );
 
-    // Read main tank capacity after pumping water
+    // Read updated main tank capacity
     const updated_main_tank_response = await axios.post(
-      `http://localhost:5000/calculate_tank_capacity`,
-      main_tank
+      "http://localhost:5000/calculate_tank_capacity",
+      {
+        hardware: main_tank.hardware,
+        height: main_tank.height,
+        radius: main_tank.radius,
+      }
     );
 
-    // Update main tank level
-    const originalMainTank = await MainTank.findOne();
-    if (originalMainTank) {
-      originalMainTank.current_level =
-        updated_main_tank_response.data.estimated_volume_liters;
-      await originalMainTank.save();
-    }
+    // Update main tank level using updateOne
+    await MainTank.updateOne(
+      { _id: main_tank._id },
+      {
+        current_level: updated_main_tank_response.data.estimated_volume_liters,
+      }
+    );
 
-    const today = new Date().getDate().toString();
-    const updatedTanks = [];
-
-    // Update water usage for all pumped tanks
-    // for (const tank of tanks_to_pump) {
-    //   console.log(`💧 Updating usage for tank ${tank._id}`);
-
-    //   // Find the original tank document to update it
-    //   const originalTank = await Tank.findById(tank._id);
-    //   if (!originalTank) {
-    //     console.log(`⚠️ Tank ${tank._id} not found for update`);
-    //     continue;
-    //   }
-
-    //   // تأكد أن اليوم ضمن 1 إلى 30 فقط
-    //   if (parseInt(today) <= 30) {
-    //     if (originalTank.amount_per_month.days[today] !== undefined) {
-    //       originalTank.amount_per_month.days[today] += 5;
-    //     } else {
-    //       originalTank.amount_per_month.days[today] = 5; // Start with 5 liters instead of 22
-    //     }
-    //     // Mark the nested path as modified so Mongoose knows to save it
-    //     originalTank.markModified("amount_per_month.days");
-    //   }
-
-    //   await originalTank.save();
-    //   updatedTanks.push({
-    //     tank_id: tank._id,
-    //     daily_usage: originalTank.amount_per_month.days,
-    //   });
-    // }
-
-    // res.status(200).json({
-    //   message: `Successfully pumped water to ${tanks_to_pump.length} tanks`,
-    //   pumped_tanks_count: tanks_to_pump.length,
-    //   hardware_response: response.data,
-    //   main_tank_level: updated_main_tank_response.data,
-    //   updated_tanks: updatedTanks,
-    // });
-    res.status(200).json({ tanks: response.data, main_tank: originalMainTank });
+    // Respond with updated data
+    res.status(200).json({
+      message: `Successfully pumped water to 1 tank`,
+      tank_response: response.data,
+      main_tank_level: updated_main_tank_response.data,
+    });
   } catch (e) {
-    console.log(e);
-
+    console.error(e);
     next(e);
   }
 };
