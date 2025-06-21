@@ -225,6 +225,17 @@ module.exports.pumpWater = async (req, res, next) => {
             day: currentDay,
             total_day_usage: tank.amount_per_month.days[currentDay],
           });
+
+          // Send notification to tank owner
+          const notificationMessage = `${tankResult.liters} liters have been pumped to your tank today. Current tank level: ${tankResult.final_liters} liters`;
+          await sendNotificationWithSocket(notificationMessage, tank.owner);
+
+          // Send tank level update via socket
+          const io = socket.getIO();
+          io.emit("tank_level_update", {
+            tank_id: tankResult.tank_id,
+            current_level: tankResult.final_liters,
+          });
         } catch (updateError) {
           console.error(
             `❌ Error updating tank ${tankResult.tank_id}:`,
