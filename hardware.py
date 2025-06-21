@@ -6,7 +6,7 @@ import math
 app = Flask(__name__)
 GPIO.setmode(GPIO.BCM)
 
-FLOW_PULSE_PER_LITER = 450  # YF-S201
+FLOW_PULSE_PER_LITER = 350  # YF-S201
 pulse_count = 0  # متغير عام
 
 def count_pulse(channel):
@@ -51,12 +51,13 @@ def control_water_pump():
         pump_data = request.get_json()
         if not pump_data:
             return jsonify({"error": "No JSON payload received"}), 400
-
+        print(pump_data['main_tank'])
         water_pump_pin = pump_data['main_tank']['hardware']['water_pump']
         duration = pump_data['main_tank']['water_pump_duration']
         tank = pump_data.get('tank', {})
         valve_pin = tank["hardware"]["solenoid_valve"]
 
+        GPIO.setmode(GPIO.BCM)
         GPIO.setup(water_pump_pin, GPIO.OUT)
         GPIO.setup(valve_pin, GPIO.OUT)
 
