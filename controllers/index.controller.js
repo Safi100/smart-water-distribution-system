@@ -145,14 +145,13 @@ module.exports.pumpWater = async (req, res, next) => {
     if (tanks_to_pump.length === 0)
       throw new HandleError("No tanks to pump", 404);
 
-    const tank = tanks_to_pump[0];
     console.log(`🚰 Found ${tanks_to_pump.length} tanks ready for pumping`);
 
-    // Send pump request to hardware (with only needed data)
+    // Send pump request to hardware (with all tanks data)
     const response = await axios.post(
       "http://localhost:5000/control_water_pump",
       {
-        tank: tank,
+        tanks: tanks_to_pump,
         main_tank: {
           hardware: main_tank.hardware,
           water_pump_duration: main_tank.water_pump_duration,
@@ -180,7 +179,7 @@ module.exports.pumpWater = async (req, res, next) => {
 
     // Respond with updated data
     res.status(200).json({
-      message: `Successfully pumped water to 1 tank`,
+      message: `Successfully pumped water to ${tanks_to_pump.length} tank(s)`,
       tank_response: response.data,
       main_tank_level: updated_main_tank_response.data,
     });
