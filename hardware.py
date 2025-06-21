@@ -89,16 +89,21 @@ def measure_water_flow_for_tank(tank, duration):
         GPIO.output(valve_pin, GPIO.HIGH)
         print(f"🚰 TANK {tank_id} - Solenoid valve CLOSED (pin {valve_pin} = HIGH)")
 
-        # حساب اللترات
+        # حساب اللترات من النبضات
         with pulse_locks[tank_id]:
             final_pulse_count = tank_pulse_counts[tank_id]
 
         liters = final_pulse_count / FLOW_PULSE_PER_LITER
 
+        # قراءة الـ ultrasonic لمعرفة الكمية الفعلية في الخزان
+        print(f"📏 TANK {tank_id} - Reading ultrasonic sensor...")
+        final_liters = read_tank_ultrasonic(tank)
+
         result = {
             "tank_id": tank_id,
             "pulses": final_pulse_count,
-            "liters": round(liters, 2)
+            "liters": round(liters, 2),
+            "final_liters": final_liters
         }
 
         print(f"✅ TANK {tank_id} - FINAL RESULT: {result}")
@@ -117,6 +122,7 @@ def measure_water_flow_for_tank(tank, duration):
             "tank_id": tank_id,
             "pulses": 0,
             "liters": 0,
+            "final_liters": 0,
             "error": str(e)
         }
     finally:
@@ -207,6 +213,62 @@ def control_water_pump():
         except:
             pass
         return jsonify({"error": str(e)}), 500
+
+def read_tank_ultrasonic(tank):
+    """قراءة حجم الماء في الخزان باستخدام الـ ultrasonic sensor"""
+    try:
+        tank_id = tank.get("_id", tank.get("id", "unknown"))
+
+        # التحقق من وجود بيانات الـ ultrasonic
+        if "ultrasonic_sensor_echo" not in tank["hardware"] or "ultrasonic_sensor_trig" not in tank["hardware"]:
+            print(f"⚠️ TANK {tank_id} - Missing ultrasonic sensor data")
+            return 0
+
+        ECHO_PIN = tank["hardware"]["ultrasonic_sensor_echo"]
+        TRIG_PIN = tank["hardware"]["ultrasonic_sensor_trig"]
+
+        # التحقق من وجود أبعاد الخزان
+        if "height" not in tank or "radius" not in tank:
+            print(f"⚠️ TANK {tank_id} - Missing tank dimensions")
+            return 0
+
+        TANK_HEIGHT = tank["height"]
+        TANK_RADIUS = tank["radius"]
+
+        print(f"📏 TANK {tank_id} - Ultrasonic: TRIG={TRIG_PIN}, ECHO={ECHO_PIN}")
+
+        GPIO.setup(TRIG_PIN, GPIO.OUT)
+        GPIO.setup(ECHO_PIN, GPIO.IN)
+
+        readings = []
+        for _ in range(5):
+            dist = measure_once(TRIG_PIN, ECHO_PIN)
+            if dist is not None:
+                readings.append(dist)
+            time.sleep(0.1)  # small delay between readings
+
+        if not readings:
+            print(f"❌ TANK {tank_id} - All ultrasonic readings failed")
+            return 0
+
+        avg_distance = round(sum(readings) / len(readings), 2)
+        print(f"📏 TANK {tank_id} - Readings: {readings}")
+        print(f"📏 TANK {tank_id} - Average distance: {avg_distance} cm")
+
+        # حساب ارتفاع الماء
+        WATER_HEIGHT = TANK_HEIGHT - avg_distance
+        WATER_HEIGHT = max(WATER_HEIGHT, 0)  # تجنب القيم السالبة
+
+        # حساب الحجم باللتر
+        volume_cm3 = math.pi * (TANK_RADIUS ** 2) * WATER_HEIGHT
+        volume_liters = round(volume_cm3 / 1000, 2)
+
+        print(f"📏 TANK {tank_id} - Water height: {WATER_HEIGHT} cm, Volume: {volume_liters} L")
+        return volume_liters
+
+    except Exception as e:
+        print(f"❌ TANK {tank_id} - Error reading ultrasonic: {str(e)}")
+        return 0
 
 def measure_once(TRIG_PIN, ECHO_PIN):
     GPIO.output(TRIG_PIN, False)
