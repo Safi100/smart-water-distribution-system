@@ -210,11 +210,12 @@ module.exports.pumpWater = async (req, res, next) => {
           // Add liters to current day (convert to number and add)
           const currentDayUsage =
             Number(tank.amount_per_month.days[currentDay]) || 0;
-          tank.amount_per_month.days[currentDay] =
-            currentDayUsage + Number(tankResult.liters);
+          const newDayUsage = currentDayUsage + Number(tankResult.liters);
 
-          // Update month if needed
+          // Mark the nested object as modified for Mongoose
+          tank.amount_per_month.days[currentDay] = newDayUsage;
           tank.amount_per_month.month = currentMonth;
+          tank.markModified("amount_per_month");
 
           await tank.save();
 
