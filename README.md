@@ -130,17 +130,20 @@ pip install flask RPi.GPIO
 4. **Environment Setup**
 Create a `.env` file with:
 ```env
-MONGODB_URI=mongodb://localhost:27017/water-distribution
-JWT_SECRET=your-secret-key
-PORT=3000
-HARDWARE_SERVER_URL=http://localhost:5000
+DATABASE=mongodb+srv://..........
+JWT_SECRET=thisissecretkeythdgkfdkdowmvlhgfff
+EMAIL_USER=nodemail_email
+PASS_USER=nodemail_password
+STRIPE_SECRET_KEY=
+SERVER_ALIVE_ENDPOINT=api_to_render_keep_server_alive
+PORT=8000
 ```
 
 5. **Start the servers**
 
 Backend Server:
 ```bash
-npm start
+nodemon ./server.js
 ```
 
 Hardware Control Server:
